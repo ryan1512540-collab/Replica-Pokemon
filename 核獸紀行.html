@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="核獸紀行">
+<meta name="theme-color" content="#0e1621">
+<title>核獸紀行</title>
+<style>
+  :root{
+    --bg:#0e1621; --panel:#162235; --line:rgba(255,255,255,.12);
+    --text:#e8eef6; --muted:#8aa0b8; --gold:#f0c14b; --hp:#3dd68c;
+    --danger:#e85d5d; --accent:#5ec8ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#070b10;color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+    overflow:hidden;touch-action:none;overscroll-behavior:none}
+  #app{width:100%;max-width:430px;height:100dvh;max-height:100dvh;margin:0 auto;
+    background:var(--bg);position:relative;overflow:hidden;
+    box-shadow:0 0 0 1px #111,0 12px 40px rgba(0,0,0,.45)}
+  .view{position:absolute;inset:0;display:none;flex-direction:column}
+  .view.on{display:flex}
+  button{font:inherit;color:inherit;border:1px solid var(--line);background:#203047;
+    border-radius:12px;padding:12px 14px;font-weight:800;cursor:pointer}
+  button:active{transform:translateY(1px);filter:brightness(1.08)}
+  button:disabled{opacity:.4}
+  button.gold{background:var(--gold);color:#2a1d05;border-color:transparent}
+  button.ghost{background:transparent}
+  h1,h2{font-weight:900;letter-spacing:.04em}
+  .muted{color:var(--muted)}
+  .pad{padding:max(16px,env(safe-area-inset-top)) 16px 16px}
+
+  /* Title */
+  #title{justify-content:center;align-items:center;text-align:center;gap:14px;
+    background:radial-gradient(circle at 50% 20%,#243656,var(--bg) 70%)}
+  #title .mark{font-size:64px;line-height:1}
+  #title p{line-height:1.7;max-width:320px;font-size:14px}
+  #title .btns{display:flex;flex-direction:column;gap:10px;width:min(280px,80%)}
+
+  /* Starter */
+  #starter{padding:max(18px,env(safe-area-inset-top)) 14px 18px;gap:10px}
+  #starter .cards{display:flex;flex-direction:column;gap:10px;overflow:auto}
+  .scard{display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;
+    border:1px solid var(--line);background:#132033;text-align:left}
+  .scard .orb{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;
+    font-size:34px;flex:0 0 auto}
+  .scard b{font-size:18px}
+  .scard small{display:block;margin-top:4px;color:var(--muted);line-height:1.5}
+
+  /* World */
+  #world canvas{width:100%;height:100%;display:block;background:#0a1220}
+  #world .stage{flex:1;position:relative;min-height:0}
+  #hud{position:absolute;top:max(8px,env(safe-area-inset-top));left:10px;right:10px;
+    display:flex;justify-content:space-between;pointer-events:none;z-index:3}
+  #hud .chip{background:rgba(10,16,28,.72);border:1px solid var(--line);border-radius:10px;
+    padding:6px 10px;font-size:13px;font-weight:800}
+  #controls{height:188px;padding:6px 12px max(10px,env(safe-area-inset-bottom));
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;
+    background:linear-gradient(#101a28, #0c141f)}
+  #dpad{width:132px;height:132px;position:relative;justify-self:start}
+  #dpad b{position:absolute;width:42px;height:42px;border-radius:10px;background:#2a3d58;
+    display:grid;place-items:center;font-size:16px;border:1px solid var(--line)}
+  #dU{left:45px;top:0} #dD{left:45px;bottom:0} #dL{left:0;top:45px} #dR{right:0;top:45px}
+  #abtn{justify-self:end;display:flex;gap:10px;align-items:center}
+  #btnA,#btnM{width:64px;height:64px;border-radius:50%;font-size:15px}
+  #btnA{background:#f0c14b;color:#2a1d05;border:none}
+  #btnM{background:#2a3d58}
+
+  /* Battle */
+  #battle{background:linear-gradient(#1b3350,#0e1621 55%)}
+  #arena{flex:1;min-height:0;padding:max(10px,env(safe-area-inset-top)) 12px 8px;
+    display:flex;flex-direction:column;justify-content:space-between}
+  .battler{display:flex;align-items:center;gap:10px}
+  .battler.foe{justify-content:flex-end}
+  .orb{width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
+    font-size:42px;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .statbox{min-width:150px;background:rgba(8,14,24,.72);border:1px solid var(--line);
+    border-radius:12px;padding:8px 10px}
+  .statbox .nm{font-weight:800;font-size:14px}
+  .bar{height:8px;background:#2a3548;border-radius:99px;overflow:hidden;margin-top:6px}
+  .bar i{display:block;height:100%;width:50%;background:var(--hp)}
+  .bar.hp i.mid{background:var(--gold)} .bar.hp i.low{background:var(--danger)}
+  #blog{min-height:58px;margin:0 12px;padding:10px 12px;border-radius:12px;
+    background:#121c2b;border:1px solid var(--line);font-size:15px;line-height:1.5;font-weight:700}
+  #bcmd{display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    padding:10px 12px max(12px,env(safe-area-inset-bottom))}
+  #bcmd button{min-height:54px;font-size:16px}
+
+  /* Overlay */
+  #overlay{position:absolute;inset:0;background:rgba(6,10,16,.72);display:none;
+    z-index:20;flex-direction:column;justify-content:flex-end}
+  #overlay.on{display:flex}
+  #sheet{background:#121c2b;border-top:1px solid var(--line);border-radius:18px 18px 0 0;
+    padding:14px 14px max(16px,env(safe-area-inset-bottom));max-height:78%;
+    overflow:auto}
+  #sheet h2{font-size:18px;margin-bottom:10px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:10px;border-radius:12px;background:#1a2740;margin-bottom:8px;min-height:48px}
+  .row .l{display:flex;align-items:center;gap:8px;font-weight:800}
+  .listbtn{width:100%;text-align:left;margin-bottom:8px}
+  #sheet .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .type{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:800;
+    color:#111;margin-right:3px}
+  textarea#savebox{width:100%;min-height:90px;border-radius:10px;border:1px solid var(--line);
+    background:#0e1621;color:var(--text);padding:8px;font-size:12px;
+    -webkit-user-select:text;user-select:text}
+  .toast{position:absolute;left:50%;bottom:210px;transform:translateX(-50%);
+    background:#f0c14b;color:#2a1d05;padding:8px 14px;border-radius:99px;
+    font-weight:800;font-size:13px;display:none;z-index:30;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="title" class="view on">
+    <div class="mark">⚛️</div>
+    <h1>核獸紀行</h1>
+    <p class="muted">靈、獸、機三種核能交織的世界。<br>收編核獸、回合對戰、挑戰道館。</p>
+    <div class="btns">
+      <button class="gold" id="btnNew">新的旅程</button>
+      <button id="btnContinue">繼續冒險</button>
+      <button class="ghost" id="btnHelp">手機遊玩與存檔</button>
+    </div>
+  </section>
+
+  <section id="starter" class="view">
+    <h2>選擇最初的核獸</h2>
+    <p class="muted">三種淵源皆可收編，先選一隻同行。</p>
+    <div class="cards" id="starterCards"></div>
+    <button class="ghost" id="starterBack">返回標題</button>
+  </section>
+
+  <section id="world" class="view">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div id="hud">
+        <div class="chip" id="place">暉光鎮</div>
+        <div class="chip" id="money">◎ 0</div>
+      </div>
+    </div>
+    <div id="controls">
+      <div id="dpad">
+        <b id="dU">▲</b><b id="dD">▼</b><b id="dL">◀</b><b id="dR">▶</b>
+      </div>
+      <div id="abtn">
+        <button id="btnM">選單</button>
+        <button id="btnA">確認</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="battle" class="view">
+    <div id="arena">
+      <div class="battler foe">
+        <div class="statbox">
+          <div class="nm" id="fName">——</div>
+          <div class="bar hp"><i id="fHp"></i></div>
+          <div class="muted" id="fMeta" style="font-size:12px;margin-top:4px"></div>
+        </div>
+        <div class="orb" id="fOrb">👾</div>
+      </div>
+      <div class="battler">
+        <div class="orb" id="pOrb">🐾</div>
+        <div class="statbox">
+          <div class="nm" id="pName">——</div>
+          <div class="bar hp"><i id="pHp"></i></div>
+          <div class="muted" id="pMeta" style="font-size:12px;margin-top:4px"></div>
+        </div>
+      </div>
+    </div>
+    <div id="blog">遭遇了野生核獸！</div>
+    <div id="bcmd"></div>
+  </section>
+
+  <div id="overlay"><div id="sheet"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const SAVE_KEY = "nuclea_save_v1";
+const $ = id => document.getElementById(id);
+const views = { title:$("title"), starter:$("starter"), world:$("world"), battle:$("battle") };
+const canvas = $("cv"), ctx = canvas.getContext("2d");
+const overlay = $("overlay"), sheet = $("sheet"), toastEl = $("toast");
+
+function showView(name){
+  Object.keys(views).forEach(k => views[k].classList.toggle("on", k===name));
+}
+function toast(t){
+  toastEl.textContent = t; toastEl.style.display = "block";
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(()=>{ toastEl.style.display = "none"; }, 1400);
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+const TYPE_COLOR = {
+  火:"#ff8a4c", 水:"#4fc3f7", 草:"#66bb6a", 電:"#ffd54f",
+  岩:"#bcaaa4", 鋼:"#90a4ae", 暗:"#9575cd", 普:"#cfd8dc"
+};
+const CHART = {
+  火:{草:2,鋼:2,水:.5,岩:.5,火:.5},
+  水:{火:2,岩:2,水:.5,草:.5},
+  草:{水:2,岩:2,火:.5,草:.5,鋼:.5},
+  電:{水:2,岩:.5,電:.5,草:.5,鋼:.5},
+  岩:{火:2,電:2,鋼:.5,草:.5},
+  鋼:{岩:2,火:.5,鋼:.5,水:.5},
+  暗:{鋼:2,草:1.5,暗:.5,火:.5},
+  普:{}
+};
+function typeMul(atk, defs){
+  let m = 1;
+  defs.forEach(d => { m *= (CHART[atk] && CHART[atk][d] != null) ? CHART[atk][d] : 1; });
+  return m;
+}
+function typeBadge(t){ return `<span class="type" style="background:${TYPE_COLOR[t]||"#ccc"}">${t}</span>`; }
+
+const MOVES = {
+  tackle:{name:"撞擊", type:"普", pow:40, acc:100},
+  ember:{name:"火花", type:"火", pow:40, acc:100},
+  flare:{name:"烈焰", type:"火", pow:80, acc:90},
+  watergun:{name:"水槍", type:"水", pow:40, acc:100},
+  surge:{name:"浪潮", type:"水", pow:80, acc:90},
+  leaf:{name:"葉片", type:"草", pow:40, acc:100},
+  vine:{name:"藤鞭", type:"草", pow:55, acc:100},
+  spark:{name:"電擊", type:"電", pow:40, acc:100},
+  thunder:{name:"雷光", type:"電", pow:80, acc:85},
+  rock:{name:"落石", type:"岩", pow:50, acc:90},
+  quake:{name:"岩崩", type:"岩", pow:75, acc:85},
+  metal:{name:"鐵爪", type:"鋼", pow:50, acc:95},
+  gear:{name:"齒輪擊", type:"鋼", pow:75, acc:90},
+  bite:{name:"暗咬", type:"暗", pow:60, acc:100},
+  shadow:{name:"影襲", type:"暗", pow:75, acc:95},
+  quick:{name:"電光", type:"普", pow:40, acc:100, pri:1}
+};
+
+const SPECIES = {
+  emberkit:{ name:"焰崽", cat:"精靈", types:["火"], evo:["flarefox",16], rate:180, exp:55,
+    base:{hp:42,atk:56,def:40,spd:68}, color:"#ff6b35", emoji:"🔥",
+    learn:[[1,"tackle"],[4,"ember"],[9,"quick"],[16,"flare"]] },
+  flarefox:{ name:"炎狐", cat:"神獸", types:["火"], evo:null, rate:60, exp:140,
+    base:{hp:68,atk:88,def:62,spd:98}, color:"#ff3d00", emoji:"🦊",
+    learn:[[1,"tackle"],[1,"ember"],[9,"quick"],[16,"flare"]] },
+  droplet:{ name:"潮滴", cat:"精靈", types:["水"], evo:["abyssfin",16], rate:180, exp:55,
+    base:{hp:48,atk:50,def:62,spd:46}, color:"#4fc3f7", emoji:"💧",
+    learn:[[1,"tackle"],[4,"watergun"],[10,"bite"],[16,"surge"]] },
+  abyssfin:{ name:"淵鮫", cat:"神獸", types:["水"], evo:null, rate:60, exp:140,
+    base:{hp:78,atk:82,def:80,spd:68}, color:"#0277bd", emoji:"🦈",
+    learn:[[1,"tackle"],[1,"watergun"],[10,"bite"],[16,"surge"]] },
+  gearbit:{ name:"齒芯", cat:"機械", types:["鋼"], evo:["mechhound",16], rate:160, exp:60,
+    base:{hp:50,atk:54,def:72,spd:40}, color:"#90a4ae", emoji:"⚙️",
+    learn:[[1,"tackle"],[5,"metal"],[11,"spark"],[16,"gear"]] },
+  mechhound:{ name:"機獒", cat:"機械", types:["鋼","電"], evo:null, rate:55, exp:150,
+    base:{hp:74,atk:90,def:98,spd:58}, color:"#546e7a", emoji:"🤖",
+    learn:[[1,"tackle"],[1,"metal"],[11,"spark"],[16,"gear"],[20,"thunder"]] },
+  sprout:{ name:"葉芽", cat:"精靈", types:["草"], evo:["vineguard",14], rate:200, exp:50,
+    base:{hp:46,atk:50,def:50,spd:48}, color:"#66bb6a", emoji:"🌱",
+    learn:[[1,"tackle"],[4,"leaf"],[10,"vine"]] },
+  vineguard:{ name:"蔓守", cat:"精靈", types:["草"], evo:null, rate:80, exp:120,
+    base:{hp:72,atk:76,def:84,spd:56}, color:"#2e7d32", emoji:"🌿",
+    learn:[[1,"tackle"],[1,"leaf"],[10,"vine"],[18,"rock"]] },
+  pebble:{ name:"石丸", cat:"神獸", types:["岩"], evo:["rockplate",15], rate:190, exp:52,
+    base:{hp:52,atk:60,def:82,spd:28}, color:"#8d6e63", emoji:"🪨",
+    learn:[[1,"tackle"],[6,"rock"],[15,"quake"]] },
+  rockplate:{ name:"岩鎧", cat:"神獸", types:["岩","鋼"], evo:null, rate:70, exp:135,
+    base:{hp:80,atk:82,def:118,spd:32}, color:"#5d4037", emoji:"🛡️",
+    learn:[[1,"tackle"],[1,"rock"],[15,"quake"],[18,"metal"]] },
+  voltmouse:{ name:"電齒", cat:"機械", types:["電"], evo:null, rate:160, exp:70,
+    base:{hp:40,atk:58,def:38,spd:92}, color:"#ffd54f", emoji:"⚡",
+    learn:[[1,"tackle"],[3,"spark"],[12,"quick"],[18,"thunder"]] },
+  duskcat:{ name:"影貓", cat:"精靈", types:["暗"], evo:null, rate:140, exp:75,
+    base:{hp:44,atk:70,def:42,spd:88}, color:"#7e57c2", emoji:"🐈",
+    learn:[[1,"tackle"],[5,"bite"],[12,"shadow"],[16,"quick"]] }
+};
+
+const STARTERS = [
+  { sid:"emberkit", blurb:"火系精靈。速度快，適合先手壓制。" },
+  { sid:"droplet", blurb:"水系精靈。較耐久，對岩石與火焰有優勢。" },
+  { sid:"gearbit", blurb:"機械寵物。防高，進化後兼具鋼鐵與雷電。" }
+];
+
+function maxHp(mon){
+  const b = SPECIES[mon.sid].base.hp;
+  return Math.floor(b*2*mon.lv/100)+mon.lv+10;
+}
+function statOf(mon, key){
+  const b = SPECIES[mon.sid].base[key];
+  return Math.floor(b*2*mon.lv/100)+5;
+}
+function expToNext(lv){ return lv*lv*lv; }
+function movesFor(sid, lv){
+  return SPECIES[sid].learn.filter(x=>x[0]<=lv).map(x=>x[1]).slice(-4);
+}
+function createMon(sid, lv){
+  const mon = { uid:uid(), sid, lv, exp:0, moves:movesFor(sid,lv) };
+  mon.hp = maxHp(mon);
+  return mon;
+}
+function cloneMon(m){ return JSON.parse(JSON.stringify(m)); }
+function monName(m){ return SPECIES[m.sid].name; }
+function isFaint(m){ return m.hp<=0; }
+function living(list){ return list.filter(m=>!isFaint(m)); }
+
+const ITEMS = {
+  potion:{ name:"傷藥", price:300, desc:"回復 50 HP" },
+  super:{ name:"好傷藥", price:800, desc:"回復 120 HP" },
+  ball:{ name:"靈核", price:250, desc:"捕捉野生核獸" },
+  great:{ name:"高級核", price:700, desc:"較容易捕捉" }
+};
+
+const MAPS = {
+  town:{
+    name:"暉光鎮",
+    tiles:[
+      "###############",
+      "#@............#",
+      "#...H.....S...#",
+      "#.............#",
+      "#.............#",
+      "#....####.....#",
+      "#....#屋##.....#",
+      "#....####.....#",
+      "#.............#",
+      "#.............#",
+      "#......A......#",
+      "###############"
+    ],
+    warps:{ A:{map:"route1",x:7,y:2} },
+    npcs:[
+      {x:1,y:9,ch:"教",name:"核導教授",color:"#f0c14b",
+        lines:["歡迎來到暉光鎮。","南邊翠葉道可以遇敵、捕捉。","隊伍最多 6 隻，多的會進核倉。","準備好就去挑戰燼炎館吧。"]}
+    ]
+  },
+  route1:{
+    name:"翠葉道",
+    tiles:[
+      "###############",
+      "#......B......#",
+      "#......,......#",
+      "#..ggg,,,ggg..#",
+      "#..ggg,,,ggg..#",
+      "#..T..,,,.....#",
+      "#..gggg,,ggg..#",
+      "#..gggg,,C....#",
+      "#.....,,......#",
+      "#....D,,......#",
+      "#......E......#",
+      "###############"
+    ],
+    warps:{ B:{map:"town",x:7,y:9}, C:{map:"quarry",x:2,y:5}, D:{map:"factory",x:12,y:5}, E:{map:"gym",x:7,y:2} },
+    grass:[["sprout",3,7],["pebble",3,6],["voltmouse",4,7],["duskcat",5,8]],
+    npcs:[
+      {x:3,y:5,ch:"訓",name:"見習訓練家",color:"#7ec8ff",
+        trainer:{name:"見習訓練家", prize:400, team:[["sprout",6],["pebble",6]]}}
+    ]
+  },
+  quarry:{
+    name:"碎岩徑",
+    tiles:[
+      "###############",
+      "#.............#",
+      "#..ggg...ggg..#",
+      "#..ggg...ggg..#",
+      "#.............#",
+      "#C............#",
+      "#..gg.....T...#",
+      "#..gg.........#",
+      "#.............#",
+      "#.............#",
+      "#.............#",
+      "###############"
+    ],
+    warps:{ C:{map:"route1",x:10,y:7} },
+    grass:[["pebble",6,11],["sprout",5,8],["rockplate",10,13]],
+    npcs:[
+      {x:9,y:6,ch:"岩",name:"岩行者",color:"#bcaaa4",
+        trainer:{name:"岩行者", prize:700, team:[["pebble",10],["pebble",11]]}}
+    ]
+  },
+  factory:{
+    name:"廢棄核廠",
+    tiles:[
+      "###############",
+      "#.............#",
+      "#.##......##..#",
+      "#.##.ggg..##..#",
+      "#....ggg......#",
+      "#............D#",
+      "#.....T.......#",
+      "#.##.ggg..##..#",
+      "#.##......##..#",
+      "#.............#",
+      "#.............#",
+      "###############"
+    ],
+    warps:{ D:{map:"route1",x:6,y:9} },
+    grass:[["voltmouse",7,12],["gearbit",7,12],["duskcat",8,12]],
+    npcs:[
+      {x:5,y:6,ch:"技",name:"廢棄技師",color:"#90a4ae",
+        trainer:{name:"廢棄技師", prize:800, team:[["voltmouse",11],["gearbit",12]]}}
+    ]
+  },
+  gym:{
+    name:"燼炎館",
+    tiles:[
+      "###############",
+      "#......E......#",
+      "#.............#",
+      "#..####.####..#",
+      "#.............#",
+      "#.............#",
+      "#......L......#",
+      "#.............#",
+      "#.............#",
+      "#.............#",
+      "#.............#",
+      "###############"
+    ],
+    warps:{ E:{map:"route1",x:7,y:9} },
+    npcs:[
+      {x:7,y:6,ch:"館",name:"館主・燼",color:"#ff6b35",
+        trainer:{name:"館主・燼", prize:1800, gym:true, team:[["emberkit",14],["duskcat",14],["flarefox",17]]}}
+    ]
+  }
+};
+
+function tileAt(map,x,y){
+  const rows = MAPS[map].tiles;
+  if(y<0||x<0||y>=rows.length||x>=rows[0].length) return "#";
+  return rows[y][x];
+}
+function walkable(ch){
+  return !!ch && ch!=="#" && ch!=="屋";
+}
+
+let S = null;
+let dir = {x:0,y:1};
+let busy = false;
+let moveHold = null;
+let moveTimer = 0;
+let battle = null;
+let cw=0, ch=0;
+
+function defaultState(){
+  return {
+    map:"town", x:1, y:1,
+    money:1500,
+    bag:{ potion:3, super:0, ball:5, great:1 },
+    party:[],
+    box:[],
+    seen:{},
+    caught:{},
+    flags:{ gym1:false, beaten:{} },
+    play:0
+  };
+}
+
+function persist(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }
+  catch(e){ toast("存檔失敗，請改用匯出"); }
+}
+function loadSave(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function exportCode(){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+}
+function importCode(code){
+  const data = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+  if(!data || !data.party) throw new Error("格式不對");
+  S = data;
+  persist();
+}
+
+function markSeen(sid){ S.seen[sid]=1; }
+function markCaught(sid){ S.caught[sid]=1; S.seen[sid]=1; }
+
+function firstAlive(){
+  return S.party.findIndex(m=>!isFaint(m));
+}
+
+function healAll(){
+  S.party.forEach(m => m.hp = maxHp(m));
+}
+
+function addMon(mon){
+  markCaught(mon.sid);
+  if(S.party.length<6){ S.party.push(mon); return "party"; }
+  S.box.push(mon); return "box";
+}
+
+function fitCanvas(){
+  const box = canvas.parentElement.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  canvas.width = Math.floor(box.width*dpr);
+  canvas.height = Math.floor(box.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  cw = box.width; ch = box.height;
+}
+
+function drawWorld(){
+  if(!S) return;
+  const map = MAPS[S.map];
+  const rows = map.tiles, tw = rows[0].length, th = rows.length;
+  const ts = Math.floor(Math.min(cw/tw, ch/th));
+  const ox = Math.floor((cw-tw*ts)/2), oy = Math.floor((ch-th*ts)/2);
+  ctx.clearRect(0,0,cw,ch);
+  ctx.fillStyle = "#0a1220";
+  ctx.fillRect(0,0,cw,ch);
+  for(let y=0;y<th;y++){
+    for(let x=0;x<tw;x++){
+      const t = rows[y][x];
+      let col = "#1b2a3d";
+      if(t==="#") col = "#2a3a50";
+      else if(t==="," ) col = "#3d3428";
+      else if(t==="g") col = "#2d5a32";
+      else if(t==="H") col = "#245a4a";
+      else if(t==="S") col = "#5a4a28";
+      else if(t==="屋") col = "#3a2a40";
+      else if("ABCDE".includes(t)) col = "#3d3428";
+      ctx.fillStyle = col;
+      ctx.fillRect(ox+x*ts, oy+y*ts, ts, ts);
+      if(t==="g"){
+        ctx.fillStyle = "#3d7a42";
+        ctx.fillRect(ox+x*ts+4, oy+y*ts+ts*0.45, ts-8, ts*0.4);
+      }
+      if(t==="H"||t==="S"){
+        ctx.fillStyle = "#f3e6c0";
+        ctx.font = `bold ${Math.max(10,ts*0.34)}px sans-serif`;
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText(t==="H"?"療":"店", ox+x*ts+ts/2, oy+y*ts+ts/2);
+      }
+    }
+  }
+  (map.npcs||[]).forEach(n=>{
+    ctx.fillStyle = n.color||"#ddd";
+    ctx.beginPath();
+    ctx.arc(ox+n.x*ts+ts/2, oy+n.y*ts+ts/2, ts*0.32, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#111";
+    ctx.font = `bold ${Math.max(10,ts*0.32)}px sans-serif`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(n.ch, ox+n.x*ts+ts/2, oy+n.y*ts+ts/2+1);
+  });
+  const px = ox+S.x*ts+ts/2, py = oy+S.y*ts+ts/2;
+  ctx.fillStyle = "#f0c14b";
+  ctx.beginPath(); ctx.arc(px,py,ts*0.3,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#2a1d05";
+  ctx.beginPath();
+  ctx.moveTo(px+dir.x*ts*0.28, py+dir.y*ts*0.28);
+  ctx.lineTo(px-dir.y*ts*0.12, py+dir.x*ts*0.12);
+  ctx.lineTo(px+dir.y*ts*0.12, py-dir.x*ts*0.12);
+  ctx.closePath(); ctx.fill();
+  $("place").textContent = map.name;
+  $("money").textContent = "◎ "+S.money;
+}
+
+function npcAt(x,y){
+  return (MAPS[S.map].npcs||[]).find(n=>n.x===x&&n.y===y);
+}
+
+function tryMove(dx,dy){
+  if(busy || !views.world.classList.contains("on")) return;
+  dir = {x:dx,y:dy};
+  const nx = S.x+dx, ny = S.y+dy;
+  const t = tileAt(S.map,nx,ny);
+  if(npcAt(nx,ny) || !walkable(t)){ drawWorld(); return; }
+  S.x = nx; S.y = ny;
+  const warp = MAPS[S.map].warps[t];
+  if(warp){
+    S.map = warp.map; S.x = warp.x; S.y = warp.y;
+    persist();
+    drawWorld();
+    return;
+  }
+  drawWorld();
+  if(t==="g" && Math.random()<0.16){
+    startWild();
+  }
+}
+
+function facingTile(){
+  return { x:S.x+dir.x, y:S.y+dir.y, ch:tileAt(S.map,S.x+dir.x,S.y+dir.y) };
+}
+
+function interact(){
+  if(busy) return;
+  const t = tileAt(S.map,S.x,S.y);
+  if(t==="H"){ healAll(); persist(); openDialog("治療臺",["核獸的傷勢已完全恢復。"]); return; }
+  if(t==="S"){ openShop(); return; }
+  const f = facingTile();
+  const npc = npcAt(f.x,f.y);
+  if(npc){
+    if(npc.trainer){
+      const key = S.map+":"+npc.name;
+      if(S.flags.beaten[key]){ openDialog(npc.name,["你已經贏過我了。去挑戰更強的對手吧。"]); return; }
+      if(npc.trainer.gym && S.flags.gym1){ openDialog(npc.name,["燼炎徽章在你手上。去鍛鍊更強的核獸吧。"]); return; }
+      openDialog(npc.name, npc.lines || [npc.name+"想要對戰！"], ()=> startTrainer(npc));
+      return;
+    }
+    openDialog(npc.name, npc.lines);
+  }
+}
+
+function closeOverlay(){ overlay.classList.remove("on"); sheet.innerHTML=""; }
+function openSheet(html){
+  sheet.innerHTML = html;
+  overlay.classList.add("on");
+}
+
+function openDialog(title, lines, done){
+  busy = true;
+  let i = 0;
+  function render(){
+    openSheet(`<h2>${title}</h2><p style="line-height:1.7;font-weight:700">${lines[i]}</p>
+      <button class="gold" style="width:100%;margin-top:14px" id="dlgNext">${i<lines.length-1?"繼續":"好"}</button>`);
+    $("dlgNext").onclick = ()=>{
+      if(i<lines.length-1){ i++; render(); }
+      else { closeOverlay(); busy=false; if(done) done(); }
+    };
+  }
+  render();
+}
+
+function openShop(){
+  busy = true;
+  function render(){
+    const rows = Object.keys(ITEMS).map(k=>{
+      const it = ITEMS[k];
+      return `<div class="row"><div class="l">${it.name}<span class="muted"> ◎${it.price}</span></div>
+        <button data-buy="${k}">買</button></div>`;
+    }).join("");
+    openSheet(`<h2>核具商店</h2><p class="muted">持有 ◎ ${S.money}</p>${rows}
+      <button class="ghost" id="shopClose" style="width:100%">離開</button>`);
+    sheet.querySelectorAll("[data-buy]").forEach(b=>{
+      b.onclick = ()=>{
+        const k = b.getAttribute("data-buy");
+        if(S.money < ITEMS[k].price){ toast("錢不夠"); return; }
+        S.money -= ITEMS[k].price;
+        S.bag[k] = (S.bag[k]||0)+1;
+        persist(); toast("買下了"+ITEMS[k].name); render();
+      };
+    });
+    $("shopClose").onclick = ()=>{ closeOverlay(); busy=false; };
+  }
+  render();
+}
+
+function openMenu(){
+  if(busy) return;
+  busy = true;
+  openSheet(`<h2>選單</h2>
+    <button class="listbtn" id="mParty">核獸隊伍</button>
+    <button class="listbtn" id="mBag">背包</button>
+    <button class="listbtn" id="mDex">圖鑑</button>
+    <button class="listbtn" id="mSave">存檔／備份</button>
+    <button class="listbtn ghost" id="mTitle">回標題</button>
+    <button class="listbtn ghost" id="mClose">關閉</button>`);
+  $("mParty").onclick = ()=> openParty("field");
+  $("mBag").onclick = ()=> openBag("field");
+  $("mDex").onclick = openDex;
+  $("mSave").onclick = openSave;
+  $("mTitle").onclick = ()=>{ persist(); closeOverlay(); busy=false; battle=null; showView("title"); $("btnContinue").disabled=!loadSave(); };
+  $("mClose").onclick = ()=>{ closeOverlay(); busy=false; };
+}
+
+function monRow(m, extra=""){
+  const sp = SPECIES[m.sid];
+  const hp = maxHp(m);
+  const types = sp.types.map(typeBadge).join("");
+  return `<div class="l"><span style="font-size:22px">${sp.emoji}</span>
+    <div>${sp.name} <span class="muted">Lv.${m.lv}</span><br>${types}
+    <span class="muted">HP ${Math.max(0,m.hp)}/${hp}</span> ${extra}</div></div>`;
+}
+
+function openParty(mode, onPick){
+  const rows = S.party.map((m,i)=>`<button class="listbtn" data-i="${i}">${monRow(m)}</button>`).join("")
+    || `<p class="muted">隊伍是空的</p>`;
+  const canBox = mode==="field" && S.box.length && S.party.length<6;
+  openSheet(`<h2>隊伍 ${S.party.length}/6</h2>${rows}
+    ${S.box.length?`<p class="muted">核倉 ${S.box.length} 隻</p>`:""}
+    ${canBox?`<button class="listbtn" id="pBox">從核倉叫回</button>`:""}
+    ${mode==="battle-must"?"":`<button class="ghost" id="pBack" style="width:100%">返回</button>`}`);
+  sheet.querySelectorAll("[data-i]").forEach(b=>{
+    b.onclick = ()=>{
+      const i = +b.getAttribute("data-i");
+      if(onPick) onPick(i);
+      else openSummary(i, mode);
+    };
+  });
+  if(canBox) $("pBox").onclick = openBox;
+  const back = $("pBack");
+  if(back) back.onclick = ()=>{
+    if(mode==="battle"){ closeOverlay(); busy=false; battleCmd(); }
+    else openMenu();
+  };
+}
+function openBox(){
+  const rows = S.box.map((m,i)=>`<button class="listbtn" data-b="${i}">${monRow(m)}</button>`).join("");
+  openSheet(`<h2>核倉</h2><p class="muted">點選叫回隊伍（需有空位）</p>${rows}
+    <button class="ghost" id="boxBack" style="width:100%">返回</button>`);
+  sheet.querySelectorAll("[data-b]").forEach(b=>{
+    b.onclick = ()=>{
+      if(S.party.length>=6){ toast("隊伍已滿"); return; }
+      const i = +b.getAttribute("data-b");
+      S.party.push(S.box.splice(i,1)[0]); persist(); openParty("field");
+    };
+  });
+  $("boxBack").onclick = ()=> openParty("field");
+}
+
+function openSummary(i){
+  const m = S.party[i];
+  const sp = SPECIES[m.sid];
+  const mv = m.moves.map(id=>`<div class="row"><div class="l">${typeBadge(MOVES[id].type)}${MOVES[id].name}</div>
+    <span class="muted">${MOVES[id].pow||"—"}</span></div>`).join("");
+  const evo = sp.evo ? `<p class="muted">進化：Lv.${sp.evo[1]} → ${SPECIES[sp.evo[0]].name}</p>` : "";
+  openSheet(`<h2>${sp.name}</h2>
+    <p>${sp.types.map(typeBadge).join("")} ${sp.cat}</p>
+    <p>Lv.${m.lv}　HP ${m.hp}/${maxHp(m)}　攻 ${statOf(m,"atk")}　防 ${statOf(m,"def")}　速 ${statOf(m,"spd")}</p>
+    <p class="muted">經驗 ${m.exp}/${expToNext(m.lv)}</p>${evo}${mv}
+    <div class="grid2">
+      <button id="sumUp"${i===0?" disabled":""}>上移</button>
+      <button id="sumBox"${S.party.length<=1?" disabled":""}>送入核倉</button>
+    </div>
+    <button class="ghost" id="sumBack" style="width:100%;margin-top:8px">返回</button>`);
+  $("sumUp").onclick = ()=>{
+    if(i<=0) return;
+    const tmp = S.party[i-1]; S.party[i-1]=S.party[i]; S.party[i]=tmp;
+    persist(); openSummary(i-1);
+  };
+  $("sumBox").onclick = ()=>{
+    if(S.party.length<=1){ toast("至少留一隻"); return; }
+    S.box.push(S.party.splice(i,1)[0]); persist(); openParty("field");
+  };
+  $("sumBack").onclick = ()=> openParty("field");
+}
+
+function openBag(mode){
+  const keys = Object.keys(ITEMS);
+  const rows = keys.map(k=>{
+    const n = S.bag[k]||0;
+    return `<div class="row"><div class="l">${ITEMS[k].name}<span class="muted"> ×${n}<br>${ITEMS[k].desc}</span></div>
+      <button data-use="${k}" ${n<=0?"disabled":""}>使用</button></div>`;
+  }).join("");
+  openSheet(`<h2>背包</h2>${rows}<button class="ghost" id="bagBack" style="width:100%">返回</button>`);
+  sheet.querySelectorAll("[data-use]").forEach(b=>{
+    b.onclick = ()=> useItem(b.getAttribute("data-use"), mode);
+  });
+  $("bagBack").onclick = ()=>{
+    if(mode==="battle"){ closeOverlay(); busy=false; battleCmd(); }
+    else openMenu();
+  };
+}
+
+function useItem(key, mode){
+  if((S.bag[key]||0)<=0) return;
+  if(key==="ball"||key==="great"){
+    if(mode!=="battle" || !battle || battle.kind!=="wild"){ toast("只能在野外捕捉"); return; }
+    closeOverlay(); busy=true;
+    S.bag[key]--; persist();
+    resolveCatch(key);
+    return;
+  }
+  openParty(mode==="battle"?"battle":"field", idx=>{
+    const m = S.party[idx];
+    if(isFaint(m)){ toast("瀕死無法回復"); return; }
+    const heal = key==="super"?120:50;
+    const room = maxHp(m)-m.hp;
+    if(room<=0){ toast("HP 已滿"); return; }
+    m.hp = Math.min(maxHp(m), m.hp+heal);
+    S.bag[key]--; persist();
+    toast(monName(m)+"回復了");
+    if(mode==="battle"){ closeOverlay(); busy=true; afterPlayerItem(); }
+    else openBag(mode);
+  });
+}
+
+function openDex(){
+  const ids = Object.keys(SPECIES);
+  const rows = ids.map(id=>{
+    const sp = SPECIES[id];
+    const known = S.seen[id];
+    const own = S.caught[id];
+    const nm = known?sp.name:"???";
+    const ic = known?sp.emoji:"❔";
+    return `<div class="row"><div class="l"><span style="font-size:22px">${ic}</span>
+      ${nm} ${own?"✓":""}<br><span class="muted">${known?(sp.cat+"　"+sp.types.join("／")):"尚未遭遇"}</span></div></div>`;
+  }).join("");
+  openSheet(`<h2>圖鑑 ${Object.keys(S.caught).length}/${ids.length}</h2>${rows}
+    <button class="ghost" id="dexBack" style="width:100%">返回</button>`);
+  $("dexBack").onclick = openMenu;
+}
+
+function openSave(){
+  const code = S ? exportCode() : "";
+  openSheet(`<h2>存檔／備份</h2>
+    <p class="muted" style="line-height:1.6;margin-bottom:8px">遊戲會自動寫入此瀏覽器。手機建議再複製備份碼，以免清理快取時丟失。</p>
+    <textarea id="savebox">${code}</textarea>
+    <div class="grid2" style="margin-top:8px">
+      <button id="svCopy">複製備份碼</button>
+      <button id="svImp">讀取備份碼</button>
+    </div>
+    <button class="gold" id="svNow" style="width:100%;margin-top:8px">立刻存檔</button>
+    <button class="ghost" id="svBack" style="width:100%;margin-top:8px">返回</button>`);
+  $("svCopy").onclick = async ()=>{
+    try{ await navigator.clipboard.writeText($("savebox").value); toast("已複製"); }
+    catch(e){ $("savebox").select(); toast("請長按複製"); }
+  };
+  $("svImp").onclick = ()=>{
+    try{ importCode($("savebox").value); closeOverlay(); busy=false; showView("world"); fitCanvas(); drawWorld(); toast("已讀取存檔"); }
+    catch(e){ toast("備份碼無效"); }
+  };
+  $("svNow").onclick = ()=>{ persist(); toast("已存檔"); };
+  $("svBack").onclick = openMenu;
+}
+
+function openHelp(){
+  openSheet(`<h2>手機遊玩與存檔</h2>
+    <p style="line-height:1.75">
+    <b>建議形式</b>：直式網頁 RPG。用瀏覽器打開，再「加入主畫面」，會比較像 App。<br><br>
+    <b>存檔</b>：進度存在這個瀏覽器裡，不必登入。但以下情況可能丟失：無痕模式、清快取、換瀏覽器、用 LINE／微信內建瀏覽器、或很久沒開被系統清空間。<br><br>
+    <b>較穩的做法</b>：用 Chrome／Safari 開啟 → 加入主畫面 → 重要進度到選單「存檔／備份」複製備份碼。<br><br>
+    操作：方向鍵移動，確認交談／治療／商店，草叢會遇敵。
+    </p>
+    <button class="gold" id="helpOk" style="width:100%;margin-top:10px">知道了</button>`);
+  overlay.classList.add("on");
+  $("helpOk").onclick = ()=> closeOverlay();
+}
+
+/* —— Battle —— */
+function setHpBar(el, mon){
+  const pct = clamp(mon.hp/maxHp(mon)*100,0,100);
+  el.style.width = pct+"%";
+  el.className = pct<=25?"low":pct<=50?"mid":"";
+}
+
+function paintBattle(){
+  if(!battle) return;
+  const you = S.party[battle.pi];
+  const foe = battle.foe;
+  const ys = SPECIES[you.sid], fs = SPECIES[foe.sid];
+  $("pOrb").textContent = ys.emoji; $("pOrb").style.background = ys.color;
+  $("fOrb").textContent = fs.emoji; $("fOrb").style.background = fs.color;
+  $("pName").textContent = ys.name+"  Lv."+you.lv;
+  $("fName").textContent = (battle.kind==="wild"?"野生 ":"")+fs.name+"  Lv."+foe.lv;
+  $("pMeta").innerHTML = ys.types.map(typeBadge).join("")+" HP "+you.hp+"/"+maxHp(you);
+  $("fMeta").innerHTML = fs.types.map(typeBadge).join("")+(battle.kind==="trainer"?"　"+battle.trainerName:"");
+  setHpBar($("pHp"), you); setHpBar($("fHp"), foe);
+}
+
+function blog(t){ $("blog").textContent = t; }
+
+function battleBtns(list){
+  $("bcmd").innerHTML = list.map((x,i)=>`<button data-b="${i}" ${x.dis?"disabled":""}>${x.t}</button>`).join("");
+  $("bcmd").querySelectorAll("button").forEach(b=>{
+    b.onclick = ()=> list[+b.getAttribute("data-b")].fn();
+  });
+}
+
+function startWild(){
+  const table = MAPS[S.map].grass;
+  if(!table || firstAlive()<0) return;
+  const [sid, lo, hi] = pick(table);
+  const lv = lo + Math.floor(Math.random()*(hi-lo+1));
+  const foe = createMon(sid, lv);
+  markSeen(sid);
+  beginBattle({ kind:"wild", foe, trainerName:"", prize: 80+lv*8 });
+}
+
+function startTrainer(npc){
+  const t = npc.trainer;
+  const key = S.map+":"+npc.name;
+  const team = t.team.map(([sid,lv])=>createMon(sid,lv));
+  team.forEach(m=>markSeen(m.sid));
+  beginBattle({ kind:"trainer", foe:team[0], team, ti:0, trainerName:t.name, prize:t.prize, gym:!!t.gym, beatKey:key });
+}
+
+function beginBattle(b){
+  busy = true;
+  battle = Object.assign({ pi: firstAlive(), lock:false }, b);
+  showView("battle");
+  paintBattle();
+  blog(b.kind==="wild" ? `野生的 ${monName(b.foe)} 跳了出來！` : `${b.trainerName} 要挑戰你！`);
+  battleCmd();
+}
+
+function battleCmd(){
+  if(!battle) return;
+  battle.lock = false;
+  paintBattle();
+  battleBtns([
+    {t:"戰鬥", fn:()=> moveMenu()},
+    {t:"核獸", fn:()=> switchMenu(false)},
+    {t:"道具", fn:()=>{ busy=true; openBag("battle"); }},
+    {t: battle.kind==="wild"?"逃跑":"不能逃", fn:()=> tryRun(), dis:battle.kind!=="wild"}
+  ]);
+}
+
+function moveMenu(){
+  const you = S.party[battle.pi];
+  battleBtns(you.moves.map(id=>{
+    const mv = MOVES[id];
+    return { t: typeBadge(mv.type)+mv.name, fn:()=> playerAct({type:"move", id}) };
+  }).concat([{ t:"返回", fn:battleCmd }]));
+}
+
+function switchMenu(must){
+  busy = true;
+  openParty(must?"battle-must":"battle", idx=>{
+    if(idx===battle.pi){ toast("已經在場上"); return; }
+    if(isFaint(S.party[idx])){ toast("這隻已瀕死"); return; }
+    closeOverlay();
+    const old = monName(S.party[battle.pi]);
+    battle.pi = idx;
+    paintBattle();
+    if(must){ blog(`去吧，${monName(S.party[idx])}！`); wait(500).then(battleCmd); }
+    else playerAct({type:"switch", idx, old});
+  });
+}
+
+function tryRun(){
+  if(battle.kind!=="wild") return;
+  const you = S.party[battle.pi], foe = battle.foe;
+  const chance = clamp(0.35 + (statOf(you,"spd")-statOf(foe,"spd"))/200, 0.2, 0.9);
+  if(Math.random()<chance){ endBattle("逃出了戰鬥。"); }
+  else { blog("逃不掉！"); afterPlayerItem(); }
+}
+
+async function playerAct(act){
+  if(battle.lock) return;
+  battle.lock = true;
+  $("bcmd").innerHTML = "";
+  const foeAct = aiAct();
+  const you = S.party[battle.pi];
+  const order = [];
+  if(act.type==="switch"){
+    order.push({side:"p", act});
+    order.push({side:"f", act:foeAct});
+  }else{
+    const pp = act.type==="move" ? (MOVES[act.id].pri||0) : 0;
+    const fp = foeAct.type==="move" ? (MOVES[foeAct.id].pri||0) : 0;
+    const ys = statOf(you,"spd"), fs = statOf(battle.foe,"spd");
+    const firstP = pp>fp || (pp===fp && ys>=fs);
+    if(firstP){ order.push({side:"p",act}); order.push({side:"f",act:foeAct}); }
+    else { order.push({side:"f",act:foeAct}); order.push({side:"p",act}); }
+  }
+  for(const step of order){
+    if(!battle) return;
+    if(step.side==="p" && isFaint(S.party[battle.pi])) continue;
+    if(step.side==="f" && isFaint(battle.foe)) continue;
+    await doAct(step.side, step.act);
+    if(await checkFaints()) return;
+  }
+  if(battle) battleCmd();
+}
+
+async function afterPlayerItem(){
+  battle.lock = true; $("bcmd").innerHTML = "";
+  await doAct("f", aiAct());
+  if(await checkFaints()) return;
+  if(battle) battleCmd();
+}
+
+function aiAct(){
+  const foe = battle.foe;
+  const you = S.party[battle.pi];
+  let best = foe.moves[0], score = -1;
+  foe.moves.forEach(id=>{
+    const mv = MOVES[id];
+    const s = (mv.pow||0) * typeMul(mv.type, SPECIES[you.sid].types);
+    if(s>score){ score=s; best=id; }
+  });
+  if(Math.random()<0.25) best = pick(foe.moves);
+  return {type:"move", id:best};
+}
+
+async function doAct(side, act){
+  if(act.type==="switch"){
+    blog(`${act.old}，回來！去吧，${monName(S.party[battle.pi])}！`);
+    paintBattle(); await wait(550); return;
+  }
+  const atk = side==="p" ? S.party[battle.pi] : battle.foe;
+  const def = side==="p" ? battle.foe : S.party[battle.pi];
+  const mv = MOVES[act.id];
+  blog(`${monName(atk)} 使出 ${mv.name}！`);
+  await wait(420);
+  if(Math.random()*100 > mv.acc){ blog("沒有打中！"); await wait(500); return; }
+  const stab = SPECIES[atk.sid].types.includes(mv.type) ? 1.5 : 1;
+  const eff = typeMul(mv.type, SPECIES[def.sid].types);
+  const base = ((2*atk.lv/5+2)*mv.pow*statOf(atk,"atk")/statOf(def,"def"))/50 + 2;
+  const dmg = Math.max(1, Math.floor(base*stab*eff*(0.85+Math.random()*0.15)));
+  def.hp = Math.max(0, def.hp-dmg);
+  paintBattle();
+  let extra = `造成 ${dmg} 傷害。`;
+  if(eff>1.5) extra += " 效果絕佳！";
+  else if(eff<1 && eff>0) extra += " 似乎不太有效…";
+  blog(extra);
+  await wait(520);
+}
+
+async function checkFaints(){
+  if(!battle) return true;
+  const you = S.party[battle.pi];
+  if(isFaint(battle.foe)){
+    blog(`${monName(battle.foe)} 倒下了！`);
+    await wait(500);
+    if(battle.kind==="trainer"){
+      battle.ti++;
+      if(battle.ti < battle.team.length){
+        battle.foe = battle.team[battle.ti];
+        blog(`${battle.trainerName} 派出了 ${monName(battle.foe)}！`);
+        paintBattle(); await wait(600);
+        return false;
+      }
+    }
+    await gainExp(battle.foe);
+    await winBattle();
+    return true;
+  }
+  if(isFaint(you)){
+    blog(`${monName(you)} 倒下了！`);
+    await wait(500);
+    if(living(S.party).length){ switchMenu(true); return true; }
+    await loseBattle();
+    return true;
+  }
+  return false;
+}
+
+async function gainExp(foe){
+  const you = S.party[battle.pi];
+  if(isFaint(you)) return;
+  const got = Math.floor(SPECIES[foe.sid].exp * foe.lv / 6);
+  you.exp += got;
+  blog(`${monName(you)} 獲得 ${got} 經驗！`);
+  await wait(450);
+  while(you.exp >= expToNext(you.lv) && you.lv<50){
+    you.exp -= expToNext(you.lv);
+    const old = maxHp(you);
+    you.lv++;
+    you.hp += maxHp(you)-old;
+    SPECIES[you.sid].learn.filter(x=>x[0]===you.lv).forEach(x=>{
+      const id=x[1]; if(you.moves.includes(id)) return;
+      if(you.moves.length<4) you.moves.push(id);
+      else you.moves = you.moves.slice(1).concat([id]);
+    });
+    blog(`${monName(you)} 升到 Lv.${you.lv}！`);
+    paintBattle(); await wait(500);
+  }
+  const sp = SPECIES[you.sid];
+  if(sp.evo && you.lv>=sp.evo[1]){
+    const to = sp.evo[0];
+    blog(`${sp.name} 的核能湧現……`);
+    await wait(600);
+    you.sid = to;
+    you.hp = Math.min(maxHp(you), you.hp + 8);
+    markCaught(to); markSeen(to);
+    blog(`進化成 ${SPECIES[to].name}！`);
+    paintBattle(); await wait(700);
+  }
+}
+
+async function resolveCatch(ballKey){
+  battle.lock = true; $("bcmd").innerHTML = "";
+  const foe = battle.foe;
+  const mul = ballKey==="great"?1.8:1;
+  const max = maxHp(foe);
+  const a = ((3*max - 2*foe.hp) * SPECIES[foe.sid].rate * mul) / (3*max);
+  const chance = clamp(a/255, 0.05, 0.95);
+  blog(`投出了${ITEMS[ballKey].name}！`);
+  await wait(550);
+  if(Math.random()<chance){
+    const got = cloneMon(foe);
+    got.hp = Math.max(1, got.hp);
+    const where = addMon(got);
+    blog(`捕捉成功！${monName(got)} ${where==="box"?"已送入核倉。":"加入隊伍！"}`);
+    await wait(800);
+    endBattle("");
+  }else{
+    blog("可惜，它掙脫了！");
+    await wait(450);
+    await afterPlayerItem();
+  }
+}
+
+async function winBattle(){
+  S.money += battle.prize;
+  if(battle.kind==="trainer"){
+    S.flags.beaten[battle.beatKey] = 1;
+    if(battle.gym){
+      S.flags.gym1 = true;
+      S.bag.great = (S.bag.great||0)+3;
+      blog("擊敗館主・燼！獲得燼炎徽章與 3 顆高級核。");
+      await wait(900);
+    }
+  }
+  persist();
+  endBattle(battle.kind==="wild" ? "戰鬥結束。" : `${battle.trainerName} 被你打敗了！◎${battle.prize}`);
+}
+
+async function loseBattle(){
+  const lose = Math.floor(S.money*0.15);
+  S.money = Math.max(0, S.money-lose);
+  healAll();
+  S.map="town"; S.x=3; S.y=2;
+  persist();
+  endBattle("隊伍全滅……醒來時已在暉光鎮治療臺。");
+}
+
+function endBattle(msg){
+  if(msg) blog(msg);
+  battle = null; busy=false;
+  showView("world"); fitCanvas(); drawWorld();
+  persist();
+}
+
+/* —— Input —— */
+const keys = {};
+[["dU",0,-1],["dD",0,1],["dL",-1,0],["dR",1,0]].forEach(([id,dx,dy])=>{
+  const el = $(id);
+  const start = ev=>{ ev.preventDefault(); moveHold={dx,dy}; tryMove(dx,dy); };
+  const end = ev=>{ ev.preventDefault(); moveHold=null; };
+  el.addEventListener("pointerdown", start);
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointerleave", end);
+  el.addEventListener("pointercancel", end);
+});
+$("btnA").onclick = interact;
+$("btnM").onclick = openMenu;
+
+window.addEventListener("keydown", e=>{
+  keys[e.key]=true;
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  if(e.key==="ArrowUp"||e.key==="w"||e.key==="W") tryMove(0,-1);
+  if(e.key==="ArrowDown"||e.key==="s"||e.key==="S") tryMove(0,1);
+  if(e.key==="ArrowLeft"||e.key==="a"||e.key==="A") tryMove(-1,0);
+  if(e.key==="ArrowRight"||e.key==="d"||e.key==="D") tryMove(1,0);
+  if(e.key==="Enter"||e.key==="z"||e.key==="Z"||e.key===" ") interact();
+  if(e.key==="Escape") openMenu();
+});
+window.addEventListener("keyup", e=>{ keys[e.key]=false; });
+
+setInterval(()=>{
+  if(!moveHold) return;
+  moveTimer += 80;
+  if(moveTimer>=180){ moveTimer=0; tryMove(moveHold.dx, moveHold.dy); }
+}, 80);
+
+["gesturestart","gesturechange","gestureend"].forEach(t=>{
+  document.addEventListener(t, e=>e.preventDefault(), {passive:false});
+});
+overlay.addEventListener("click", e=>{ if(e.target===overlay) { /* keep */ } });
+
+window.addEventListener("resize", ()=>{ if(views.world.classList.contains("on")){ fitCanvas(); drawWorld(); } });
+
+/* —— Boot —— */
+function renderStarters(){
+  $("starterCards").innerHTML = STARTERS.map(st=>{
+    const sp = SPECIES[st.sid];
+    return `<button class="scard" data-sid="${st.sid}">
+      <div class="orb" style="background:${sp.color}">${sp.emoji}</div>
+      <div><b>${sp.name}</b> ${sp.types.map(typeBadge).join("")}<small>${st.blurb}</small></div>
+    </button>`;
+  }).join("");
+  $("starterBack").onclick = ()=> showView("title");
+  $("starterCards").querySelectorAll(".scard").forEach(b=>{
+    b.onclick = ()=>{
+      S = defaultState();
+      const mon = createMon(b.getAttribute("data-sid"), 5);
+      addMon(mon);
+      persist();
+      showView("world"); fitCanvas(); drawWorld();
+      openDialog("核導教授", [
+        `就決定是 ${monName(mon)} 了。`,
+        "在草叢遇敵、用靈核捕捉，隊伍最多 6 隻。",
+        "南邊有見習訓練家與燼炎館。去成為核導者吧。"
+      ]);
+    };
+  });
+}
+
+$("btnNew").onclick = ()=>{
+  if(loadSave() && !confirm("開始新遊戲會覆蓋舊存檔，確定嗎？")) return;
+  showView("starter");
+  renderStarters();
+};
+$("btnContinue").onclick = ()=>{
+  const data = loadSave();
+  if(!data || !data.party || !data.party.length){ toast("沒有存檔"); return; }
+  S = data;
+  showView("world"); fitCanvas(); drawWorld();
+};
+$("btnHelp").onclick = openHelp;
+$("btnContinue").disabled = !loadSave();
+
+showView("title");
+})();
+</script>
+</body>
+</html>
