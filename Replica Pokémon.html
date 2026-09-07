@@ -55,17 +55,25 @@
     display:flex;justify-content:space-between;pointer-events:none;z-index:3}
   #hud .chip{background:rgba(10,16,28,.72);border:1px solid var(--line);border-radius:10px;
     padding:6px 10px;font-size:13px;font-weight:800}
-  #controls{height:188px;padding:6px 12px max(10px,env(safe-area-inset-bottom));
+  #controls{height:236px;padding:8px 14px max(16px,env(safe-area-inset-bottom));
     display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;
     background:linear-gradient(#101a28,#0c141f);touch-action:none}
-  #dpad{width:132px;height:132px;position:relative;justify-self:start}
-  #dpad b{position:absolute;width:42px;height:42px;border-radius:10px;background:#2a3d58;
-    display:grid;place-items:center;font-size:16px;border:1px solid var(--line)}
-  #dU{left:45px;top:0} #dD{left:45px;bottom:0} #dL{left:0;top:45px} #dR{right:0;top:45px}
-  #abtn{justify-self:end;display:flex;gap:10px;align-items:center}
-  #btnA,#btnM{width:64px;height:64px;border-radius:50%;font-size:15px}
+  #dpad{width:176px;height:176px;position:relative;justify-self:start;
+    touch-action:none;-webkit-user-select:none;user-select:none}
+  #dpad:before{content:"";position:absolute;inset:-20px;border-radius:50%}
+  #dpad:after{content:"";position:absolute;left:52px;top:52px;width:72px;height:72px;
+    border-radius:50%;background:#1a2838;border:2px solid var(--line);pointer-events:none}
+  #dpad b{position:absolute;width:64px;height:64px;border-radius:16px;background:#2a3d58;
+    display:grid;place-items:center;font-size:22px;border:2px solid var(--line);
+    pointer-events:none;box-shadow:0 3px 0 #152030}
+  #dpad b.on{background:#f0c14b;color:#2a1d05;border-color:#c9a43a;box-shadow:0 1px 0 #8a7020}
+  #dU{left:56px;top:0} #dD{left:56px;bottom:0} #dL{left:0;top:56px} #dR{right:0;top:56px}
+  #abtn{justify-self:end;display:flex;gap:14px;align-items:center}
+  #btnA,#btnM{width:78px;height:78px;border-radius:50%;font-size:16px;box-shadow:0 4px 0 #152030}
   #btnA{background:#f0c14b;color:#2a1d05;border:none}
+  #btnA:active{transform:translateY(2px);box-shadow:0 1px 0 #8a7020}
   #btnM{background:#2a3d58}
+  #btnM:active{transform:translateY(2px);box-shadow:0 1px 0 #0e1620}
 
   #battle{background:#0b1a12}
   #arena{flex:1;min-height:0;position:relative}
@@ -107,7 +115,7 @@
   textarea#savebox{width:100%;min-height:90px;border-radius:10px;border:1px solid var(--line);
     background:#0e1621;color:var(--text);padding:8px;font-size:12px;
     -webkit-user-select:text;user-select:text;touch-action:auto}
-  .toast{position:absolute;left:50%;bottom:210px;transform:translateX(-50%);
+  .toast{position:absolute;left:50%;bottom:250px;transform:translateX(-50%);
     background:#f0c14b;color:#2a1d05;padding:8px 14px;border-radius:99px;
     font-weight:800;font-size:13px;display:none;z-index:30;white-space:nowrap}
 </style>
@@ -2592,19 +2600,57 @@ function endBattle(msg){
 }
 
 /* —— Input —— */
-function holdDir(dx,dy){ moveHold={dx,dy}; tryMove(dx,dy); }
-function releaseDir(dx,dy){
-  if(moveHold && moveHold.dx===dx && moveHold.dy===dy) moveHold=null;
+function paintPad(dx,dy){
+  [["dU",0,-1],["dD",0,1],["dL",-1,0],["dR",1,0]].forEach(([id,x,y])=>{
+    $(id).classList.toggle("on", dx===x && dy===y);
+  });
 }
-[["dU",0,-1],["dD",0,1],["dL",-1,0],["dR",1,0]].forEach(([id,dx,dy])=>{
-  const el = $(id);
-  const start = ev=>{ ev.preventDefault(); holdDir(dx,dy); };
-  const end = ev=>{ ev.preventDefault(); releaseDir(dx,dy); };
-  el.addEventListener("pointerdown", start);
-  el.addEventListener("pointerup", end);
-  el.addEventListener("pointerleave", end);
-  el.addEventListener("pointercancel", end);
-});
+function holdDir(dx,dy){
+  moveHold={dx,dy};
+  paintPad(dx,dy);
+  tryMove(dx,dy);
+}
+function releaseDir(dx,dy){
+  if(moveHold && moveHold.dx===dx && moveHold.dy===dy){
+    moveHold=null;
+    paintPad(9,9);
+  }
+}
+function padDirFromEvent(ev, el){
+  const r = el.getBoundingClientRect();
+  const x = (ev.clientX - r.left)/r.width - 0.5;
+  const y = (ev.clientY - r.top)/r.height - 0.5;
+  if(Math.abs(x)<0.10 && Math.abs(y)<0.10) return moveHold ? [moveHold.dx, moveHold.dy] : null;
+  return Math.abs(x)>Math.abs(y) ? (x<0?[-1,0]:[1,0]) : (y<0?[0,-1]:[0,1]);
+}
+(function bindPad(){
+  const pad = $("dpad");
+  let pid = null;
+  const apply = ev=>{
+    const d = padDirFromEvent(ev, pad);
+    if(!d) return;
+    if(!moveHold || moveHold.dx!==d[0] || moveHold.dy!==d[1]) holdDir(d[0], d[1]);
+  };
+  pad.addEventListener("pointerdown", ev=>{
+    ev.preventDefault();
+    pid = ev.pointerId;
+    try{ pad.setPointerCapture(ev.pointerId); }catch(e){}
+    apply(ev);
+  });
+  pad.addEventListener("pointermove", ev=>{
+    if(pid==null || ev.pointerId!==pid) return;
+    ev.preventDefault();
+    apply(ev);
+  });
+  const stop = ev=>{
+    if(pid==null || (ev && ev.pointerId!==pid)) return;
+    pid = null;
+    moveHold = null;
+    paintPad(9,9);
+  };
+  pad.addEventListener("pointerup", stop);
+  pad.addEventListener("pointercancel", stop);
+})();
 $("btnA").onclick = interact;
 $("btnM").onclick = ()=> openMenu(false);
 
