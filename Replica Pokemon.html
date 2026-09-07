@@ -16,13 +16,13 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;height:-webkit-fill-available;background:#070b10;color:var(--text);
+  html,body{height:var(--app-h,100dvh);max-height:var(--app-h,100dvh);background:#070b10;color:var(--text);
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
     overflow:hidden;touch-action:manipulation;overscroll-behavior:none}
-  #app{width:100%;max-width:430px;height:100%;min-height:100svh;min-height:-webkit-fill-available;
-    margin:0 auto;background:var(--bg);position:relative;overflow:hidden;
+  #app{width:100%;max-width:430px;height:var(--app-h,100dvh);max-height:var(--app-h,100dvh);
+    margin:0 auto;margin-top:var(--app-top,0px);background:var(--bg);position:relative;overflow:hidden;
     box-shadow:0 0 0 1px #111,0 12px 40px rgba(0,0,0,.45)}
-  .view{position:absolute;inset:0;display:none;flex-direction:column}
+  .view{position:absolute;inset:0;display:none;flex-direction:column;min-height:0}
   .view.on{display:flex}
   button{font:inherit;color:inherit;border:1px solid var(--line);background:#203047;
     border-radius:12px;padding:12px 14px;font-weight:800;cursor:pointer;
@@ -40,7 +40,7 @@
 
   #title{justify-content:flex-start;align-items:center;text-align:center;gap:10px;
     overflow-y:auto;-webkit-overflow-scrolling:touch;
-    padding:max(12px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom));
+    padding:max(12px,env(safe-area-inset-top)) 16px max(28px,calc(env(safe-area-inset-bottom) + 16px));
     background:radial-gradient(circle at 50% 20%,#243656,var(--bg) 70%)}
   #title .mark{width:88px;height:88px;flex:0 0 auto;image-rendering:pixelated}
   #title h1{flex:0 0 auto;font-size:28px}
@@ -49,7 +49,8 @@
     margin-top:auto;position:relative;z-index:5;padding-top:8px}
   #title .btns button{width:100%;min-height:48px;position:relative;z-index:5}
 
-  #starter{padding:max(18px,env(safe-area-inset-top)) 14px 18px;gap:10px;min-height:0}
+  #starter{padding:max(18px,env(safe-area-inset-top)) 14px max(28px,calc(env(safe-area-inset-bottom) + 16px));
+    gap:10px;min-height:0}
   #starter .cards{display:flex;flex-direction:column;gap:10px;overflow:auto;
     touch-action:pan-y;-webkit-overflow-scrolling:touch}
   .scard{display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;
@@ -64,7 +65,7 @@
     display:flex;justify-content:space-between;pointer-events:none;z-index:3}
   #hud .chip{background:rgba(10,16,28,.72);border:1px solid var(--line);border-radius:10px;
     padding:6px 10px;font-size:13px;font-weight:800}
-  #controls{height:236px;padding:8px 14px max(16px,env(safe-area-inset-bottom));
+  #controls{flex:0 0 auto;height:auto;padding:8px 14px max(28px,calc(env(safe-area-inset-bottom) + 18px));
     display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;
     background:linear-gradient(#101a28,#0c141f);touch-action:none}
   #dpad{width:176px;height:176px;position:relative;justify-self:start;
@@ -83,6 +84,14 @@
   #btnA:active{transform:translateY(2px);box-shadow:0 1px 0 #8a7020}
   #btnM{background:#2a3d58}
   #btnM:active{transform:translateY(2px);box-shadow:0 1px 0 #0e1620}
+  @media (max-height: 680px){
+    #dpad{width:152px;height:152px}
+    #dpad:after{left:44px;top:44px;width:64px;height:64px}
+    #dpad b{width:54px;height:54px}
+    #dU{left:49px} #dD{left:49px} #dL{top:49px} #dR{top:49px}
+    #btnA,#btnM{width:66px;height:66px}
+    #title .mark{width:72px;height:72px}
+  }
 
   #battle{background:#0b1a12}
   #arena{flex:1;min-height:0;position:relative}
@@ -113,8 +122,8 @@
   .bar.exp i{background:#4fc3f7}
   #blog{min-height:58px;margin:0 10px;padding:10px 12px;border-radius:8px;
     background:#f4ead0;color:#2a2214;border:3px solid #2c2418;font-size:15px;line-height:1.5;font-weight:800}
-  #bcmd{display:grid;grid-template-columns:1fr 1fr;gap:8px;
-    padding:10px 12px max(12px,env(safe-area-inset-bottom));background:#1a2740}
+  #bcmd{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:0 0 auto;
+    padding:10px 12px max(28px,calc(env(safe-area-inset-bottom) + 16px));background:#1a2740}
 
   #overlay{position:absolute;inset:0;background:rgba(6,10,16,.72);display:none;
     z-index:20;flex-direction:column;justify-content:flex-end;touch-action:auto;
@@ -126,7 +135,7 @@
   #sheet h2{font-size:18px;margin-bottom:10px;flex:0 0 auto}
   .sheet-body{overflow:auto;flex:1;min-height:0;touch-action:pan-y;-webkit-overflow-scrolling:touch}
   .sheet-actions{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:8px;
-    padding:10px 0 max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line);margin-top:8px}
+    padding:10px 0 max(28px,calc(env(safe-area-inset-bottom) + 16px));border-top:1px solid var(--line);margin-top:8px}
   .sheet-actions .wide{grid-column:1/-1}
   .row{display:flex;align-items:center;justify-content:space-between;gap:8px;
     padding:10px;border-radius:12px;background:#1a2740;margin-bottom:8px;min-height:48px}
@@ -220,6 +229,20 @@ window.addEventListener("error", function(ev){
   p.textContent = "腳本錯誤：" + (ev.message||"unknown") + (ev.lineno ? "（第 "+ev.lineno+" 行）" : "");
   box.appendChild(p);
 });
+
+function fitAppFrame(){
+  const vv = window.visualViewport;
+  const h = Math.round(vv && vv.height ? vv.height : window.innerHeight);
+  const top = Math.round(vv && vv.offsetTop ? vv.offsetTop : 0);
+  document.documentElement.style.setProperty("--app-h", h+"px");
+  document.documentElement.style.setProperty("--app-top", top+"px");
+}
+fitAppFrame();
+if(window.visualViewport){
+  visualViewport.addEventListener("resize", fitAppFrame);
+  visualViewport.addEventListener("scroll", fitAppFrame);
+}
+window.addEventListener("orientationchange", ()=> setTimeout(fitAppFrame, 120));
 
 const SAVE_KEY = "nuclea_save_v1";
 const SAVE_BAK = "nuclea_save_v1_bak";
@@ -3346,9 +3369,16 @@ overlay.addEventListener("click", e=>{
 });
 
 window.addEventListener("resize", ()=>{
+  fitAppFrame();
   if(views.world.classList.contains("on")){ fitCanvas(); drawWorld(); }
   if(views.battle.classList.contains("on")) fitBattle();
 });
+if(window.visualViewport){
+  visualViewport.addEventListener("resize", ()=>{
+    if(views.world.classList.contains("on")){ fitCanvas(); drawWorld(); }
+    if(views.battle.classList.contains("on")) fitBattle();
+  });
+}
 
 let lastTs = performance.now();
 function loop(now){
