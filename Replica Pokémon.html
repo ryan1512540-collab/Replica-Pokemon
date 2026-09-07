@@ -32,7 +32,7 @@
   button.ghost{background:transparent}
   h1,h2{font-weight:900;letter-spacing:.04em}
   .muted{color:var(--muted)}
-  .port{width:64px;height:64px;image-rendering:pixelated;image-rendering:crisp-edges;
+  .port{width:72px;height:72px;image-rendering:pixelated;image-rendering:crisp-edges;
     flex:0 0 auto;background:transparent}
 
   #title{justify-content:center;align-items:center;text-align:center;gap:14px;
@@ -49,7 +49,8 @@
   .scard b{font-size:18px}
   .scard small{display:block;margin-top:4px;color:var(--muted);line-height:1.5}
 
-  #world canvas{width:100%;height:100%;display:block;background:#0a1220;touch-action:none}
+  #world canvas,#bcv{width:100%;height:100%;display:block;background:#0a1220;touch-action:none;
+    image-rendering:pixelated;image-rendering:crisp-edges}
   #world .stage{flex:1;position:relative;min-height:0}
   #hud{position:absolute;top:max(8px,env(safe-area-inset-top));left:10px;right:10px;
     display:flex;justify-content:space-between;pointer-events:none;z-index:3}
@@ -421,28 +422,55 @@ function shadeHex(hex, amt){
   r = clamp(r+amt,0,255); gv = clamp(gv+amt,0,255); b = clamp(b+amt,0,255);
   return "#"+((1<<24)+(r<<16)+(gv<<8)+b).toString(16).slice(1);
 }
+const _up2 = new Map();
+function up2(grid){
+  const key = grid.join("\n");
+  if(_up2.has(key)) return _up2.get(key);
+  const h = grid.length, w = grid[0].length;
+  const out = new Array(h*2);
+  for(let y=0;y<h;y++){
+    let r0="", r1="";
+    const row = grid[y], up = grid[y-1]||row, dn = grid[y+1]||row;
+    for(let x=0;x<w;x++){
+      const p = row[x];
+      const A = up[x], C = x>0?row[x-1]:p, B = x<w-1?row[x+1]:p, D = dn[x];
+      let p1=p,p2=p,p3=p,p4=p;
+      if(C===A && C!==D && A!==B) p1=A;
+      if(A===B && A!==C && B!==D) p2=B;
+      if(D===C && D!==B && C!==A) p3=C;
+      if(B===D && B!==A && D!==C) p4=D;
+      r0+=p1+p2; r1+=p3+p4;
+    }
+    out[y*2]=r0; out[y*2+1]=r1;
+  }
+  _up2.set(key, out);
+  return out;
+}
 function drawPixels(g, grid, pal, cx, cy, size, opt){
   opt = opt || {};
   if(!grid || !grid.length) return;
+  if(opt.hq!==false && grid[0].length<=24) grid = up2(grid);
   const n = grid[0].length;
+  const rows = grid.length;
   const sc = size / n;
+  const drawW = n*sc, drawH = rows*sc;
   const outline = pal.o || "#140e0a";
   g.save();
   g.translate(cx + (opt.x||0), cy + (opt.y||0) + (opt.bob||0) + (opt.sink||0));
   g.globalAlpha = opt.alpha == null ? 1 : opt.alpha;
   if(opt.scale) g.scale(opt.scale, opt.scale);
-  g.translate(-size/2, opt.feet ? -size : -size*0.86);
+  g.translate(-drawW/2, opt.feet ? -drawH : -drawH*0.86);
   const pix = (x,y)=>{
-    if(y<0||x<0||y>=grid.length||x>=n) return ".";
+    if(y<0||x<0||y>=rows||x>=n) return ".";
     const ch = grid[y][opt.flip ? n-1-x : x];
     return (!ch || ch===".") ? "." : ch;
   };
   const fat = (x,y,col)=>{
     g.fillStyle = col;
-    g.fillRect(Math.floor(x*sc)-0.6, Math.floor(y*sc)-0.6, Math.ceil(sc)+1.2, Math.ceil(sc)+1.2);
+    g.fillRect(Math.floor(x*sc)-0.5, Math.floor(y*sc)-0.5, Math.ceil(sc)+1, Math.ceil(sc)+1);
   };
   if(!opt.sil && !(opt.flash>0.45)){
-    for(let y=0;y<grid.length;y++){
+    for(let y=0;y<rows;y++){
       for(let x=0;x<n;x++){
         if(pix(x,y)===".") continue;
         if(pix(x-1,y)===".") fat(x-1,y,outline);
@@ -452,21 +480,13 @@ function drawPixels(g, grid, pal, cx, cy, size, opt){
       }
     }
   }
-  for(let y=0;y<grid.length;y++){
+  for(let y=0;y<rows;y++){
     for(let x=0;x<n;x++){
       const ch = pix(x,y);
       if(ch===".") continue;
       const col = opt.sil ? "#1a1f28" : (opt.flash>0.45 ? "#ffffff" : (pal[ch]||"#fff"));
-      const px = Math.floor(x*sc), py = Math.floor(y*sc);
-      const w = Math.ceil(sc)+0.2, h = Math.ceil(sc)+0.2;
       g.fillStyle = col;
-      g.fillRect(px, py, w, h);
-      if(sc>=2.4 && !opt.sil && !(opt.flash>0.45)){
-        g.fillStyle = shadeHex(col, 32);
-        g.fillRect(px, py, w, Math.max(1, h*0.28));
-        g.fillStyle = shadeHex(col, -26);
-        g.fillRect(px, py+h*0.7, w, Math.max(1, h*0.3));
-      }
+      g.fillRect(Math.floor(x*sc), Math.floor(y*sc), Math.ceil(sc)+0.15, Math.ceil(sc)+0.15);
     }
   }
   g.restore();
@@ -482,10 +502,10 @@ function sprURL(sid, sil){
   const key = sid+(sil?"_s":"");
   if(sprCache[key]) return sprCache[key];
   const c = document.createElement("canvas");
-  c.width = 96; c.height = 96;
+  c.width = 128; c.height = 128;
   const g = c.getContext("2d");
   g.imageSmoothingEnabled = false;
-  drawSprite(g, sid, 48, 70, 86, {sil:!!sil});
+  drawSprite(g, sid, 64, 94, 116, {sil:!!sil});
   sprCache[key] = c.toDataURL();
   return sprCache[key];
 }
@@ -500,25 +520,25 @@ const HERO_PAL = {
 };
 const HERO = {
   d:[
-    ["................","......aaaa......",".....aaaaaa.....","....aahhhhaa....",".....cccccc.....","....cdceeecd....","....cccccccc....",".....ffffff.....","....fbbbbbbf....","...fbbbbbbbbf...","....bbbffbbb....","....ee....ee....","....ee....ee....","....gg....gg....","................","................"],
-    ["................","......aaaa......",".....aaaaaa.....","....aahhhhaa....",".....cccccc.....","....cdceeecd....","....cccccccc....",".....ffffff.....","....fbbbbbbf....","...fbbbbbbbbf...","....bbbffbbb....","...ee......ee...","...ee......ee...","...gg......gg...","................","................"],
-    ["................","......aaaa......",".....aaaaaa.....","....aahhhhaa....",".....cccccc.....","....cdceeecd....","....cccccccc....",".....ffffff.....","....fbbbbbbf....","...fbbbbbbbbf...","....bbbffbbb....","....ee...ee.....","....ee...ee.....","....gg...gg.....","................","................"]
+    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....","....aahhhhaa....",".....cccccc.....","....cdceeccd....","....cccccccc....",".....cffffc.....","....ffbbbbff....","....fbbbbbbf....","...fbbbbbbbbf...","....bbbbbbbb....","....bbffffbb....",".....b....b.....","....ee....ee....","....ee....ee....","....ee....ee....","....gg....gg....","....gg....gg....","................","................","................","................"],
+    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....","....aahhhhaa....",".....cccccc.....","....cdceeccd....","....cccccccc....",".....cffffc.....","....ffbbbbff....","....fbbbbbbf....","...fbbbbbbbbf...","....bbbbbbbb....","....bbffffbb....",".....b....b.....","...ee......ee...","...ee......ee...","...ee......ee...","...gg......gg...","...gg......gg...","................","................","................","................"],
+    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....","....aahhhhaa....",".....cccccc.....","....cdceeccd....","....cccccccc....",".....cffffc.....","....ffbbbbff....","....fbbbbbbf....","...fbbbbbbbbf...","....bbbbbbbb....","....bbffffbb....",".....b....b.....","....ee...ee.....","....ee...ee.....","....ee...ee.....","....gg...gg.....","....gg...gg.....","................","................","................","................"]
   ],
   u:[
-    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....",".....dddddd.....","....dddddddd....",".....bbbbbb.....","....bbbbbbbb....","...bbbbbbbbbb...","....bbbbbbbb....","....ee....ee....","....ee....ee....","....gg....gg....","................","................","................"],
-    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....",".....dddddd.....","....dddddddd....",".....bbbbbb.....","....bbbbbbbb....","...bbbbbbbbbb...","....bbbbbbbb....","...ee......ee...","...ee......ee...","...gg......gg...","................","................","................"],
-    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....",".....dddddd.....","....dddddddd....",".....bbbbbb.....","....bbbbbbbb....","...bbbbbbbbbb...","....bbbbbbbb....","....ee...ee.....","....ee...ee.....","....gg...gg.....","................","................","................"]
+    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....","....aaaaaaaa....",".....dddddd.....","....dddddddd....","....dddddddd....",".....bbbbbb.....","....bbbbbbbb....","...bbbbbbbbbb...","...bbbbbbbbbb...","....bbbbbbbb....","....bbbbbbbb....",".....b....b.....","....ee....ee....","....ee....ee....","....ee....ee....","....gg....gg....","....gg....gg....","................","................","................","................"],
+    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....","....aaaaaaaa....",".....dddddd.....","....dddddddd....","....dddddddd....",".....bbbbbb.....","....bbbbbbbb....","...bbbbbbbbbb...","...bbbbbbbbbb...","....bbbbbbbb....","....bbbbbbbb....",".....b....b.....","...ee......ee...","...ee......ee...","...ee......ee...","...gg......gg...","...gg......gg...","................","................","................","................"],
+    ["................","......aaaa......",".....aaaaaa.....","....aaaaaaaa....","....aaaaaaaa....",".....dddddd.....","....dddddddd....","....dddddddd....",".....bbbbbb.....","....bbbbbbbb....","...bbbbbbbbbb...","...bbbbbbbbbb...","....bbbbbbbb....","....bbbbbbbb....",".....b....b.....","....ee...ee.....","....ee...ee.....","....ee...ee.....","....gg...gg.....","....gg...gg.....","................","................","................","................"]
   ],
   s:[
-    ["................",".....aaaa.......","....aaaaaa......","....aahhh.......","....cccccc......","....cceecd......","....cccccc......","....ffffff......","...fbbbbbb......","...bbbbbbb......","....bb.bbb......","....ee..ee......","....ee..ee......","....gg..gg......","................","................"],
-    ["................",".....aaaa.......","....aaaaaa......","....aahhh.......","....cccccc......","....cceecd......","....cccccc......","....ffffff......","...fbbbbbb......","...bbbbbbb......","....bb.bbb......","...ee....ee.....","...ee....ee.....","...gg....gg.....","................","................"],
-    ["................",".....aaaa.......","....aaaaaa......","....aahhh.......","....cccccc......","....cceecd......","....cccccc......","....ffffff......","...fbbbbbb......","...bbbbbbb......","....bb.bbb......","....ee.ee.......","....ee.ee.......","....gg.gg.......","................","................"]
+    ["................",".....aaaa.......","....aaaaaa......","....aaaaaaa.....","....aahhhh......","....cccccc......","....cceecd......","....cccccc......","....ffffff......","...ffbbbbb......","...fbbbbbb......","...bbbbbbb......","....bbbbbb......","....bb.bbb......","....b...b.......","....ee..ee......","....ee..ee......","....ee..ee......","....gg..gg......","....gg..gg......","................","................","................","................"],
+    ["................",".....aaaa.......","....aaaaaa......","....aaaaaaa.....","....aahhhh......","....cccccc......","....cceecd......","....cccccc......","....ffffff......","...ffbbbbb......","...fbbbbbb......","...bbbbbbb......","....bbbbbb......","....bb.bbb......","....b...b.......","...ee....ee.....","...ee....ee.....","...ee....ee.....","...gg....gg.....","...gg....gg.....","................","................","................","................"],
+    ["................",".....aaaa.......","....aaaaaa......","....aaaaaaa.....","....aahhhh......","....cccccc......","....cceecd......","....cccccc......","....ffffff......","...ffbbbbb......","...fbbbbbb......","...bbbbbbb......","....bbbbbb......","....bb.bbb......","....b...b.......","....ee.ee.......","....ee.ee.......","....ee.ee.......","....gg.gg.......","....gg.gg.......","................","................","................","................"]
   ]
 };
 const NPC_BODY = {
-  d:["................",".....dddddd.....","....dddddddd....","....dccccccd....","....cdceeecd....","....cccccccc....",".....bbbbbb.....","....bbbbbbbb....","....bbbbbbbb....","....ee....ee....","....ee....ee....","....gg....gg....","................","................","................","................"],
-  u:["................",".....dddddd.....","....dddddddd....","....dddddddd....",".....bbbbbb.....","....bbbbbbbb....","....bbbbbbbb....","....bbbbbbbb....","....ee....ee....","....ee....ee....","....gg....gg....","................","................","................","................","................"],
-  s:["................","....ddddd.......","...ddddddd......","...dccccc.......","...cceecd.......","...cccccc.......","...bbbbbb.......","...bbbbbbb......","....bb.bbb......","....ee..ee......","....ee..ee......","....gg..gg......","................","................","................","................"]
+  d:["................",".....dddddd.....","....dddddddd....","....dddddddd....","....dccccccd....","....cdceeccd....","....cccccccc....",".....bbbbbb.....","....bbbbbbbb....","....bbbbbbbb....","....bbbbbbbb....",".....b....b.....","....ee....ee....","....ee....ee....","....ee....ee....","....gg....gg....","....gg....gg....","................","................","................","................","................","................","................"],
+  u:["................",".....dddddd.....","....dddddddd....","....dddddddd....","....dddddddd....",".....bbbbbb.....","....bbbbbbbb....","....bbbbbbbb....","....bbbbbbbb....","....bbbbbbbb....",".....b....b.....","....ee....ee....","....ee....ee....","....ee....ee....","....gg....gg....","....gg....gg....","................","................","................","................","................","................","................","................"],
+  s:["................","....ddddd.......","...ddddddd......","...ddddddd......","...dccccc.......","...cceecd.......","...cccccc.......","...bbbbbb.......","...bbbbbbb......","...bbbbbbb......","....bb.bbb......","....b...b.......","....ee..ee......","....ee..ee......","....ee..ee......","....gg..gg......","....gg..gg......","................","................","................","................","................","................","................"]
 };
 function heroFrame(){
   const face = dir.y<0 ? "u" : dir.y>0 ? "d" : "s";
@@ -1247,7 +1267,7 @@ let moveHold = null;
 let battle = null;
 let cw=0, ch=0, bw=0, bh=0;
 let worldT = 0;
-const TILE = 40;
+const TILE = 48;
 const walk = { active:false, sx:0, sy:0, dx:0, dy:0, t:0, dur:248, step:0, turnLock:0, bump:0 };
 const FX = [];
 const bat = {
@@ -1342,95 +1362,152 @@ function playerXY(){
   return {x: walk.sx + walk.dx*e, y: walk.sy + walk.dy*e};
 }
 function drawShadow(g, x, y, w){
-  g.fillStyle = "rgba(0,0,0,.28)";
+  g.fillStyle = "rgba(0,0,0,.32)";
   g.beginPath();
-  g.ellipse(x, y, w*0.38, w*0.14, 0, 0, Math.PI*2);
+  g.ellipse(x, y, w*0.36, w*0.12, 0, 0, Math.PI*2);
   g.fill();
+}
+const stampCache = {};
+function drawStamp(g, dx, dy, tw, th, rows, palmap){
+  const key = rows.join("")+Object.values(palmap).join("");
+  let c = stampCache[key];
+  if(!c){
+    const n = rows[0].length, h = rows.length, s = 3;
+    c = document.createElement("canvas");
+    c.width = n*s; c.height = h*s;
+    const cg = c.getContext("2d");
+    for(let y=0;y<h;y++){
+      for(let x=0;x<n;x++){
+        const col = palmap[rows[y][x]];
+        if(!col) continue;
+        cg.fillStyle = col;
+        cg.fillRect(x*s, y*s, s, s);
+      }
+    }
+    stampCache[key] = c;
+  }
+  g.imageSmoothingEnabled = false;
+  g.drawImage(c, dx, dy, tw, th);
+}
+const PAT = {
+  grass:[
+    "ggGgghggggGgghgg","gGgggggGghgggggG","gggghggGggggggGg","ggGggggggghggggg",
+    "gggggGghggggGggg","ghgggggggGgggghg","ggggGgggggghggGg","gGggggghgggggggg",
+    "gggghgggGgggGggg","ggGgggggggghgggg","gggggGghggggggGg","ghgggggggGgghggg",
+    "ggggGgggggggggGg","gGgggghgggGggggg","gggggggGghgggggg","ggGghgggggggGggh"
+  ],
+  grassF:[
+    "ggGgghggggGgghgg","gGggfFgGghgggggG","gggghggGggggggGg","ggGggggggghggggg",
+    "gggggGghggggGggg","ghgggggggGgggghg","ggggGggfFgghggGg","gGggggghgggggggg",
+    "gggghgggGgggGggg","ggGgggggggghgggg","gggggGghggggggGg","ghggfFgggGgghggg",
+    "ggggGgggggggggGg","gGgggghgggGggggg","gggggggGghgggggg","ggGghgggggggGggh"
+  ],
+  floor:[
+    "ddddDdddDddddDdd","dDddddddddDddddd","ddddddDdddddddDd","ddDddddddddDdddd",
+    "dddddDdddDdddddd","DddddddddddddDdd","ddddDddddddDdddd","ddddddddDddddddd",
+    "dDddddddddddDddd","ddddddDddddddddd","ddddDdddddDddddd","ddDdddddddddddDd",
+    "ddddddddDddddddd","DdddddDddddDdddd","ddddddddddddDddd","ddDdddDddddddddd"
+  ],
+  path:[
+    "pPpPppPppPpPppPp","PppppPpppPppppPp","ppPppppPppppPppp","pPpppPppppPpppPp",
+    "ppppPppPppppPppp","PpppPppppPpppPpp","ppPppppPppPppppp","pPppppPppppPppPp",
+    "ppppPpppPppppPpp","PppPppppPpppPppp","ppppPppppPppPppp","pPppppPppppppPpp",
+    "ppPpppPpppPppppp","PppppPppPppppPpp","ppppPppppPpppPpp","pPppPppppPppPppP"
+  ],
+  water0:[
+    "wwWwwwWwwwwwWwww","wwwwWwwwwwWwwwww","wWwwwwwwWwwwwwWw","wwwwwWwwwwwwWwww",
+    "wwWwwwwwWwwwWwww","wwwwwwWwwwwwWwww","wWwwwwwWwwwwwwWw","wwwwWwwwwWwwwwww",
+    "wwwWwwwWwwwwwWww","wwwwwwwwWwwwwwWw","wWwwWwwwwwwWwwww","wwwwwWwwwwwWwwww",
+    "wwWwwwwwWwwwWwww","wwwwWwwwwwwWwwww","wWwwwwwwWwwwwwWw","wwwwWwwwWwwwwWww"
+  ],
+  water1:[
+    "wwwwWwwwwwWwwwWw","wWwwwwwwWwwwwwWw","wwwwWwwwWwwwwwww","wwWwwwwwWwwwWwww",
+    "wwwwwwWwwwwwWwwW","wWwwwwwWwwwwwwww","wwwwWwwwwWwwwwWw","wwwWwwwWwwwwwWww",
+    "wwwwwwwwWwwwwwWw","wWwwWwwwwwwWwwww","wwwwwWwwwwwWwwWw","wwWwwwwwWwwwWwww",
+    "wwwwWwwwwwwWwwww","wWwwwwwwWwwwwwWw","wwwwWwwwWwwwwWww","wwWwwwWwwwwwWwww"
+  ],
+  wall:[
+    "kKkkKkkkKkkKkkKk","kkkkkkkkkkkkkkkk","KkkkKkkKkkkKkkKk","kkkkkkkkkkkkkkkk",
+    "kkKkkkKkkkKkkkKk","kkkkkkkkkkkkkkkk","kKkkKkkkKkkKkkKk","kkkkkkkkkkkkkkkk",
+    "KkkkKkkKkkkKkkKk","kkkkkkkkkkkkkkkk","kkKkkkKkkkKkkkKk","kkkkkkkkkkkkkkkk",
+    "kKkkKkkkKkkKkkKk","kkkkkkkkkkkkkkkk","KkkkKkkKkkkKkkKk","kkkkkkkkkkkkkkkk"
+  ],
+  cliff:[
+    "ggGgghggggGgghgg","gGgggggGghgggggG","kkkkkkkkkkkkkkkk","kKkkKKkkKkkKKkKk",
+    "kkkkkkkkkkkkkkkk","KKkkkkKKkkkkKKkk","kkkkkkkkkkkkkkkk","kkKkkkKkkkKkkkKk",
+    "kkkkkkkkkkkkkkkk","kKkkKkkkKkkKkkKk","kkkkkkkkkkkkkkkk","KkkkKkkKkkkKkkKk",
+    "kkkkkkkkkkkkkkkk","kkKkkkKkkkKkkkKk","kkkkkkkkkkkkkkkk","kKkkkkkkkkkkkkKk"
+  ],
+  heal:[
+    "ddddDdddDddddDdd","...rrrrrrrrrr...","..rrrrrrrrrrrr..","..rRrrrrrrrrRr..",
+    ".rrrrrrwwrrrrrr.","rrrrrrwwwwrrrrrr",".eeeeeeeeeeeeee.","ee..nnnnnnnn..ee",
+    "ee..n......n..ee","ee..n.oooo.n..ee","ee..n.o..o.n..ee","ee..n.oooo.n..ee",
+    "ee..n......n..ee","ee..nnnnnnnn..ee","eeeeeeeeeeeeeeee","ddddDdddDddddDdd"
+  ],
+  shop:[
+    "ddddDdddDddddDdd","...bbbbbbbbbb...","..bbbbbbbbbbbb..","..bBbbbbbbbbBb..",
+    ".bbbbbbhhbbbbbb.","bbbbbbhhhhbbbbbb",".eeeeeeeeeeeeee.","ee..nnnnnnnn..ee",
+    "ee..n......n..ee","ee..n.yyyy.n..ee","ee..n.y..y.n..ee","ee..n.yyyy.n..ee",
+    "ee..n......n..ee","ee..nnnnnnnn..ee","eeeeeeeeeeeeeeee","ddddDdddDddddDdd"
+  ],
+  house:[
+    "ddddDdddDddddDdd","....mmmmmmmm....","...mmmmmmmmmm...","..mmMMMMMMMMmm..",
+    ".mmmmmmmmmmmmmm.","mmmmmmmmmmmmmmmm",".eeeeeeeeeeeeee.","ee..........nnee",
+    "ee..........nnee","ee...nnnn...nnee","ee...n..n...nnee","ee...n..n...nnee",
+    "ee...n..n...nnee","ee...nnnn...nnee","eeeeeeeeeeeeeeee","ddddDdddDddddDdd"
+  ],
+  tree:[
+    "......LLLL......","....LLLLLLLL....","...LLLlLLLLLL...","..LLLLLLLLLLLL..",
+    ".LLLlLLLLLlLLLL.","..LLLLLLLLLLLL..","...LLLllLLLLL...","....LLLLLLLL....",
+    "......tttt......","......tttt......","......tttt......",".....tttttt.....","......tttt......","................","................","................"
+  ]
+};
+function tilePal(pal, kind){
+  return {
+    g: pal.grass, G: pal.g2, h: shadeHex(pal.g2, 26),
+    f: "#ec407a", F: "#f8bbd0",
+    d: pal.floor, D: shadeHex(pal.floor, 16),
+    p: pal.path, P: shadeHex(pal.path, -22),
+    w: pal.water, W: shadeHex(pal.water, 36),
+    k: pal.wall, K: shadeHex(pal.wall, 22),
+    r: "#c45c4a", R: "#e07060",
+    b: "#3d6cb8", B: "#5a88d0",
+    m: pal.roof, M: shadeHex(pal.roof, 24),
+    e: kind==="H" ? "#e8d5b0" : kind==="S" ? "#d7ccc8" : "#c4b49a",
+    n: "#3a2418", o: "#3dd68c", y: "#f0c14b",
+    L: pal.g2, l: shadeHex(pal.g2, 28), t: "#5d4037"
+  };
 }
 function drawGrassTufts(g, dx, dy, ts, pal, phase, front){
-  for(let i=0;i<7;i++){
-    const gx = dx+3+(i*5)%(ts-8);
-    const h = (front ? ts*0.50 : ts*0.40) + (i%3)*2;
-    const gy = dy + ts - h + (front ? 2 : ts*0.06);
+  for(let i=0;i<6;i++){
+    const gx = dx+4+(i*7)%(ts-10);
+    const h = (front ? ts*0.42 : ts*0.28) + (i%3)*2;
+    const gy = dy + ts - h + (front ? 1 : ts*0.08);
     g.fillStyle = i%2 ? pal.g2 : shadeHex(pal.g2, 18);
-    g.fillRect(gx+Math.sin(phase+i)*1.6, gy, 3.2, h);
+    g.fillRect(Math.floor(gx+Math.sin(phase+i)), Math.floor(gy), 3, Math.ceil(h));
   }
 }
-function drawBuilding(g, dx, dy, ts, kind, pal){
-  const roof = kind==="H" ? "#c45c4a" : kind==="S" ? "#3d6cb8" : pal.roof;
-  const wall = kind==="H" ? "#e8d5b0" : kind==="S" ? "#d7ccc8" : "#c4b49a";
-  g.fillStyle = pal.floor;
-  g.fillRect(dx, dy, ts, ts);
-  g.fillStyle = wall;
-  g.fillRect(dx+3, dy+ts*0.38, ts-6, ts*0.58);
-  g.fillStyle = roof;
-  g.beginPath();
-  g.moveTo(dx+1, dy+ts*0.42);
-  g.lineTo(dx+ts/2, dy+4);
-  g.lineTo(dx+ts-1, dy+ts*0.42);
-  g.closePath();
-  g.fill();
-  g.fillStyle = shadeHex(roof,-22);
-  g.fillRect(dx+2, dy+ts*0.38, ts-4, 4);
-  g.fillStyle = "#3a2418";
-  g.fillRect(dx+ts*0.38, dy+ts*0.62, ts*0.24, ts*0.34);
-  if(kind==="H"||kind==="S"){
-    g.fillStyle = kind==="H" ? "#3dd68c" : "#f0c14b";
-    g.beginPath(); g.arc(dx+ts*0.5, dy+ts*0.28, 4, 0, Math.PI*2); g.fill();
-  }
-}
-function drawTree(g, dx, dy, ts, pal){
-  g.fillStyle = "#5d4037";
-  g.fillRect(dx+ts*0.42, dy+ts*0.55, ts*0.16, ts*0.4);
-  g.fillStyle = pal.g2;
-  g.beginPath(); g.ellipse(dx+ts*0.5, dy+ts*0.38, ts*0.38, ts*0.34, 0, 0, Math.PI*2); g.fill();
-  g.fillStyle = shadeHex(pal.g2, 24);
-  g.beginPath(); g.ellipse(dx+ts*0.42, dy+ts*0.30, ts*0.18, ts*0.14, 0, 0, Math.PI*2); g.fill();
-}
-function drawGroundTile(g, t, dx, dy, ts, pal, x, y){
+function drawGroundTile(g, t, dx, dy, ts, pal, x, y, south){
   const hash = ((x*19)^(y*37))&7;
+  const tp = tilePal(pal, t);
   if(t==="#"){
-    g.fillStyle = pal.wall;
-    g.fillRect(dx, dy, ts, ts);
-    g.fillStyle = shadeHex(pal.wall, 22);
-    g.fillRect(dx, dy, ts, 5);
-    g.fillStyle = shadeHex(pal.wall, -20);
-    g.fillRect(dx, dy+ts*0.48, ts, 2);
-    g.fillRect(dx+ts*0.5, dy, 2, ts);
+    const edge = south && south!=="#" && south!=="屋" && south!=="~";
+    drawStamp(g, dx, dy, ts, ts, edge ? PAT.cliff : PAT.wall, tp);
     return;
   }
   if(t==="~"){
-    g.fillStyle = pal.water;
-    g.fillRect(dx, dy, ts, ts);
-    const w = Math.sin(worldT/240 + x*0.8 + y*0.5)*3;
-    g.fillStyle = "rgba(255,255,255,.20)";
-    g.fillRect(dx+5, dy+11+w, ts-12, 3);
-    g.fillRect(dx+9, dy+22-w, ts-16, 2);
+    drawStamp(g, dx, dy, ts, ts, (Math.floor(worldT/380)+x+y)%2 ? PAT.water1 : PAT.water0, tp);
     return;
   }
   if(t==="g"){
-    g.fillStyle = pal.floor;
-    g.fillRect(dx, dy, ts, ts);
-    g.fillStyle = pal.grass;
-    g.fillRect(dx, dy+ts*0.22, ts, ts*0.78);
-    drawGrassTufts(g, dx, dy, ts, pal, worldT/160 + x+y, false);
+    drawStamp(g, dx, dy, ts, ts, hash===3 ? PAT.grassF : PAT.grass, tp);
     return;
   }
-  if(t==="H"||t==="S"||t==="屋"){
-    drawBuilding(g, dx, dy, ts, t, pal);
-    return;
-  }
+  if(t==="H"){ drawStamp(g, dx, dy, ts, ts, PAT.heal, tp); return; }
+  if(t==="S"){ drawStamp(g, dx, dy, ts, ts, PAT.shop, tp); return; }
+  if(t==="屋"){ drawStamp(g, dx, dy, ts, ts, PAT.house, tp); return; }
   const path = t==="," || /[A-Z]/.test(t);
-  g.fillStyle = path ? pal.path : pal.floor;
-  g.fillRect(dx, dy, ts, ts);
-  g.fillStyle = path ? "rgba(80,50,20,.12)" : "rgba(0,0,0,.08)";
-  if(hash&1) g.fillRect(dx+3, dy+4, 4, 3);
-  if(hash&2) g.fillRect(dx+ts-10, dy+ts-9, 4, 3);
-  if(hash&4) g.fillRect(dx+ts*0.4, dy+ts*0.55, 3, 3);
-  if(path){
-    g.fillStyle = "rgba(255,255,255,.08)";
-    g.fillRect(dx, dy, ts, 2);
-  }
+  drawStamp(g, dx, dy, ts, ts, path ? PAT.path : PAT.floor, tp);
 }
 function drawWorld(){
   if(!S) return;
@@ -1461,17 +1538,19 @@ function drawWorld(){
     for(let x=x0;x<x1;x++){
       const t = rows[y][x];
       const dx = Math.floor(x*ts - camX), dy = Math.floor(y*ts - camY);
-      drawGroundTile(ctx, t, dx, dy, ts, pal, x, y);
+      const south = y+1<th ? rows[y+1][x] : "#";
+      drawGroundTile(ctx, t, dx, dy, ts, pal, x, y, south);
     }
   }
   if(outdoor){
+    const tp = tilePal(pal, "#");
     for(let y=y0;y<y1;y++){
       for(let x=x0;x<x1;x++){
         if(rows[y][x]!=="#") continue;
         const south = y+1<th ? rows[y+1][x] : "#";
         if(south!=="#" && south!=="屋" && south!=="~"){
           const dx = Math.floor(x*ts - camX), dy = Math.floor(y*ts - camY);
-          drawTree(ctx, dx, dy-ts*0.15, ts, pal);
+          drawStamp(ctx, dx, dy-ts*0.35, ts, ts*1.15, PAT.tree, tp);
         }
       }
     }
@@ -1489,7 +1568,7 @@ function drawWorld(){
       drawShadow(ctx, hx, hy+2, ts);
       const hf = heroFrame();
       const bob = walk.active ? Math.sin(walk.t/walk.dur*Math.PI)*1.8 : 0;
-      drawPixels(ctx, hf.grid, HERO_PAL, hx, hy, ts*1.12, {feet:true, flip:hf.flip, bob:-bob});
+      drawPixels(ctx, hf.grid, HERO_PAL, hx, hy, ts*1.05, {feet:true, flip:hf.flip, bob:-bob});
       const tile = tileAt(S.map, Math.round(a.x), Math.round(a.y));
       if(tile==="g"){
         const dx = Math.floor(Math.round(a.x)*ts - camX);
@@ -1506,7 +1585,7 @@ function drawWorld(){
       if(Math.abs(dx)+Math.abs(dy)===1){
         face = Math.abs(dx)>Math.abs(dy) ? "s" : (dy<0?"u":"d");
       }
-      drawPixels(ctx, NPC_BODY[face], npcPal(n.color), nx, ny, ts*1.08, {
+      drawPixels(ctx, NPC_BODY[face], npcPal(n.color), nx, ny, ts, {
         feet:true, flip: face==="s" && dx>0
       });
     }
@@ -2194,25 +2273,40 @@ function drawFx(g){
 
 function drawBattleBg(g){
   const theme = S ? S.map : "route1";
-  let top="#7ec8ff", bot="#c8e89a", ground="#6aaa3a", plat="#8bc34a";
-  if(theme==="quarry"){ top="#90a4ae"; bot="#bcaaa4"; ground="#6d4c41"; plat="#8d6e63"; }
-  else if(theme==="factory"){ top="#37474f"; bot="#546e7a"; ground="#263238"; plat="#455a64"; }
-  else if(theme==="gym"){ top="#ef6c00"; bot="#ffcc80"; ground="#bf360c"; plat="#e65100"; }
-  else if(theme==="town"){ top="#90caf9"; bot="#ffe0b2"; ground="#8d6e63"; plat="#a1887f"; }
-  else if(theme==="frost"||theme==="gym4"){ top="#b3e5fc"; bot="#e1bee7"; ground="#78909c"; plat="#eceff1"; }
-  else if(theme==="coast"||theme==="port"||theme==="cave"||theme==="gym2"){ top="#4fc3f7"; bot="#80deea"; ground="#0277bd"; plat="#4dd0e1"; }
-  else if(theme==="factory"||theme==="steel"||theme==="gym3"){ top="#546e7a"; bot="#90a4ae"; ground="#263238"; plat="#455a64"; }
-  else if(theme==="forest"||theme==="shrine"){ top="#1b5e20"; bot="#33691e"; ground="#0d1f0c"; plat="#2e7d32"; }
-  else if(theme==="star"||theme==="peak"){ top="#4527a0"; bot="#7e57c2"; ground="#1a1040"; plat="#5e35b1"; }
+  let top="#7ec8ff", mid="#b8e0a0", bot="#6aaa3a", plat="#c6e06a", hill="#4a8a3e", cloud="#fff";
+  if(theme==="quarry"){ top="#90a4ae"; mid="#bcaaa4"; bot="#6d4c41"; plat="#a1887f"; hill="#5d4037"; cloud="#eceff1"; }
+  else if(theme==="gym"){ top="#ef6c00"; mid="#ffcc80"; bot="#bf360c"; plat="#ff8a50"; hill="#e65100"; cloud="#ffe0b2"; }
+  else if(theme==="town"){ top="#90caf9"; mid="#ffe0b2"; bot="#8d6e63"; plat="#c4a574"; hill="#6d4c41"; cloud="#fff"; }
+  else if(theme==="frost"||theme==="gym4"){ top="#b3e5fc"; mid="#e1bee7"; bot="#78909c"; plat="#eceff1"; hill="#90a4ae"; cloud="#fff"; }
+  else if(theme==="coast"||theme==="port"||theme==="cave"||theme==="gym2"){ top="#4fc3f7"; mid="#80deea"; bot="#0277bd"; plat="#4dd0e1"; hill="#01579b"; cloud="#e0f7fa"; }
+  else if(theme==="factory"||theme==="steel"||theme==="gym3"){ top="#546e7a"; mid="#90a4ae"; bot="#263238"; plat="#78909c"; hill="#37474f"; cloud="#cfd8dc"; }
+  else if(theme==="forest"||theme==="shrine"){ top="#43a047"; mid="#66bb6a"; bot="#1b5e20"; plat="#81c784"; hill="#0d1f0c"; cloud="#c8e6c9"; }
+  else if(theme==="star"||theme==="peak"){ top="#4527a0"; mid="#7e57c2"; bot="#1a1040"; plat="#9575cd"; hill="#311b92"; cloud="#ede7f6"; }
   const grd = g.createLinearGradient(0,0,0,bh);
-  grd.addColorStop(0,top); grd.addColorStop(1,bot);
+  grd.addColorStop(0,top); grd.addColorStop(0.55,mid); grd.addColorStop(1,bot);
   g.fillStyle=grd; g.fillRect(0,0,bw,bh);
-  g.fillStyle=ground;
-  g.beginPath(); g.ellipse(bw*0.72,bh*0.46, bw*0.22, bh*0.055, 0,0,Math.PI*2); g.fill();
-  g.beginPath(); g.ellipse(bw*0.28,bh*0.86, bw*0.26, bh*0.06, 0,0,Math.PI*2); g.fill();
-  g.fillStyle=plat;
-  g.beginPath(); g.ellipse(bw*0.72,bh*0.445, bw*0.18, bh*0.04, 0,0,Math.PI*2); g.fill();
-  g.beginPath(); g.ellipse(bw*0.28,bh*0.845, bw*0.22, bh*0.045, 0,0,Math.PI*2); g.fill();
+  g.fillStyle = "rgba(255,255,255,.22)";
+  [[0.18,0.12,0.16],[0.62,0.08,0.12],[0.84,0.16,0.1]].forEach(([x,y,r])=>{
+    g.beginPath(); g.ellipse(bw*x, bh*y, bw*r, bh*r*0.38, 0,0,Math.PI*2); g.fill();
+  });
+  g.fillStyle = hill;
+  g.beginPath(); g.moveTo(0,bh*0.42); g.quadraticCurveTo(bw*0.25,bh*0.28,bw*0.5,bh*0.40); g.quadraticCurveTo(bw*0.75,bh*0.52,bw,bh*0.36); g.lineTo(bw,bh); g.lineTo(0,bh); g.fill();
+  g.fillStyle = bot;
+  g.fillRect(0, bh*0.58, bw, bh*0.42);
+  g.fillStyle = "rgba(0,0,0,.08)";
+  for(let i=0;i<18;i++) g.fillRect((i*37)%bw, bh*0.62+((i*13)%20), 8, 3);
+  function ring(x,y,rx,ry,c1,c2){
+    g.fillStyle="rgba(0,0,0,.22)";
+    g.beginPath(); g.ellipse(x,y+4, rx*1.05, ry*0.95, 0,0,Math.PI*2); g.fill();
+    g.fillStyle=c1;
+    g.beginPath(); g.ellipse(x,y, rx, ry, 0,0,Math.PI*2); g.fill();
+    g.fillStyle=c2;
+    g.beginPath(); g.ellipse(x,y-2, rx*0.78, ry*0.62, 0,0,Math.PI*2); g.fill();
+    g.strokeStyle="rgba(255,255,255,.18)"; g.lineWidth=2;
+    g.beginPath(); g.ellipse(x,y-3, rx*0.55, ry*0.35, 0,0,Math.PI*2); g.stroke();
+  }
+  ring(bw*0.72, bh*0.44, bw*0.20, bh*0.048, hill, plat);
+  ring(bw*0.28, bh*0.84, bw*0.24, bh*0.055, hill, plat);
 }
 
 function renderBattle(){
