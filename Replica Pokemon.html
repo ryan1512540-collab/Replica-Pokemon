@@ -135,9 +135,12 @@
     padding:10px 12px max(10px,env(safe-area-inset-bottom));background:#1a2740}
   #bcmd button{display:flex;align-items:center;justify-content:space-between;gap:6px;
     min-height:48px;padding:8px 10px;text-align:left}
+  #bcmd button.mv{flex-direction:column;align-items:stretch;gap:3px;min-height:54px}
+  #bcmd button .mv-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
   #bcmd button .mv-l{display:flex;align-items:center;gap:4px;min-width:0}
-  #bcmd button .mv-pow{flex:0 0 auto;font-size:11px;font-weight:800;color:var(--gold);
-    letter-spacing:.02em}
+  #bcmd button .mv-pp{flex:0 0 auto;font-size:11px;font-weight:800;color:var(--gold)}
+  #bcmd button .mv-pp.out{color:var(--danger)}
+  #bcmd button .mv-sub{font-size:11px;font-weight:700;color:var(--muted)}
 
   #overlay{position:absolute;inset:0;background:rgba(6,10,16,.72);display:none;
     z-index:20;flex-direction:column;justify-content:flex-end;touch-action:auto;
@@ -155,6 +158,19 @@
     padding:10px;border-radius:12px;background:#1a2740;margin-bottom:8px;min-height:48px}
   .row .l{display:flex;align-items:center;gap:8px;font-weight:800}
   .listbtn{width:100%;text-align:left;margin-bottom:8px}
+  .listbtn .monrow{width:100%;align-items:flex-start}
+  .listbtn .monmeta{flex:1;min-width:0;text-align:left}
+  .hpmini{margin-top:6px;max-width:200px}
+  .hpmini .bar{height:7px;margin-top:0;background:#243044;border:1px solid var(--line)}
+  .hpmini .lab{display:block;margin-top:3px;font-size:11px;font-weight:700;color:var(--muted)}
+  .tag-faint{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:6px;
+    background:#e85d5d;color:#fff;font-size:10px;font-weight:900}
+  .shop-row,.bag-row{align-items:flex-start}
+  .shop-info,.bag-info{flex-direction:column;align-items:flex-start;gap:3px}
+  .mv-row{align-items:flex-start}
+  .mv-info{flex-direction:column;align-items:flex-start;gap:3px;text-align:left}
+  .item-desc{font-size:12px;font-weight:800;color:var(--gold)}
+  .item-note{font-size:12px;font-weight:600;color:var(--muted);line-height:1.55}
   #sheet .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .type{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:800;
     color:#111;margin-right:3px}
@@ -328,6 +344,9 @@ function typeMul(atk, defs){
   return m;
 }
 function typeBadge(t){ return `<span class="type" style="background:${TYPE_COLOR[t]||"#ccc"}">${t}</span>`; }
+function moveStatLine(mv){
+  return `威力 ${mv.pow==null?"—":mv.pow}　命中 ${mv.acc==null?"—":mv.acc}`;
+}
 
 const SPRITES = {
   emberkit:{ pal:{a:"#ff8a3d",b:"#d94a10",c:"#ffd36a",d:"#fff1d2",e:"#1a1008",f:"#ff4d1a",o:"#3a1408"},
@@ -839,40 +858,41 @@ function npcPal(color){
 }
 
 const MOVES = {
-  tackle:{name:"撞擊", type:"普", pow:40, acc:100},
-  quick:{name:"電光", type:"普", pow:40, acc:100, pri:1},
-  wing:{name:"翼斬", type:"普", pow:60, acc:100},
-  ember:{name:"火花", type:"火", pow:40, acc:100},
-  roar:{name:"炎吼", type:"火", pow:70, acc:95},
-  flare:{name:"烈焰", type:"火", pow:80, acc:90},
-  inferno:{name:"焚天", type:"火", pow:95, acc:85},
-  watergun:{name:"水槍", type:"水", pow:40, acc:100},
-  surge:{name:"浪潮", type:"水", pow:80, acc:90},
-  leaf:{name:"葉片", type:"草", pow:40, acc:100},
-  vine:{name:"藤鞭", type:"草", pow:55, acc:100},
-  petal:{name:"花舞", type:"草", pow:80, acc:90},
-  spark:{name:"電擊", type:"電", pow:40, acc:100},
-  thunder:{name:"雷光", type:"電", pow:80, acc:85},
-  storm:{name:"天雷", type:"電", pow:95, acc:80},
-  rock:{name:"落石", type:"岩", pow:50, acc:90},
-  quake:{name:"岩崩", type:"岩", pow:75, acc:85},
-  metal:{name:"鐵爪", type:"鋼", pow:50, acc:95},
-  gear:{name:"齒輪擊", type:"鋼", pow:75, acc:90},
-  drill:{name:"鑽擊", type:"鋼", pow:80, acc:90},
-  cannon:{name:"砲擊", type:"鋼", pow:90, acc:85},
-  bite:{name:"暗咬", type:"暗", pow:60, acc:100},
-  shadow:{name:"影襲", type:"暗", pow:75, acc:95},
-  moon:{name:"月蝕", type:"暗", pow:90, acc:90},
-  frost:{name:"冰針", type:"冰", pow:40, acc:100},
-  blizzard:{name:"暴雪", type:"冰", pow:90, acc:85},
-  spirit:{name:"靈擊", type:"靈", pow:50, acc:100},
-  hex:{name:"咒縛", type:"靈", pow:75, acc:95},
-  starburst:{name:"星核", type:"靈", pow:95, acc:90},
-  sting:{name:"蟲刺", type:"蟲", pow:40, acc:100},
-  silk:{name:"絲縛", type:"蟲", pow:55, acc:95},
-  swarm:{name:"蟲潮", type:"蟲", pow:80, acc:90},
-  draco:{name:"龍息", type:"龍", pow:60, acc:100},
-  wyrm:{name:"龍擊", type:"龍", pow:90, acc:90}
+  tackle:{name:"撞擊", type:"普", pow:40, acc:100, pp:35},
+  quick:{name:"電光", type:"普", pow:40, acc:100, pp:30, pri:1},
+  wing:{name:"翼斬", type:"普", pow:60, acc:100, pp:25},
+  ember:{name:"火花", type:"火", pow:40, acc:100, pp:35},
+  roar:{name:"炎吼", type:"火", pow:70, acc:95, pp:20},
+  flare:{name:"烈焰", type:"火", pow:80, acc:90, pp:15},
+  inferno:{name:"焚天", type:"火", pow:95, acc:85, pp:8},
+  watergun:{name:"水槍", type:"水", pow:40, acc:100, pp:35},
+  surge:{name:"浪潮", type:"水", pow:80, acc:90, pp:15},
+  leaf:{name:"葉片", type:"草", pow:40, acc:100, pp:35},
+  vine:{name:"藤鞭", type:"草", pow:55, acc:100, pp:25},
+  petal:{name:"花舞", type:"草", pow:80, acc:90, pp:15},
+  spark:{name:"電擊", type:"電", pow:40, acc:100, pp:35},
+  thunder:{name:"雷光", type:"電", pow:80, acc:85, pp:15},
+  storm:{name:"天雷", type:"電", pow:95, acc:80, pp:8},
+  rock:{name:"落石", type:"岩", pow:50, acc:90, pp:25},
+  quake:{name:"岩崩", type:"岩", pow:75, acc:85, pp:15},
+  metal:{name:"鐵爪", type:"鋼", pow:50, acc:95, pp:25},
+  gear:{name:"齒輪擊", type:"鋼", pow:75, acc:90, pp:20},
+  drill:{name:"鑽擊", type:"鋼", pow:80, acc:90, pp:15},
+  cannon:{name:"砲擊", type:"鋼", pow:90, acc:85, pp:10},
+  bite:{name:"暗咬", type:"暗", pow:60, acc:100, pp:25},
+  shadow:{name:"影襲", type:"暗", pow:75, acc:95, pp:20},
+  moon:{name:"月蝕", type:"暗", pow:90, acc:90, pp:10},
+  frost:{name:"冰針", type:"冰", pow:40, acc:100, pp:35},
+  blizzard:{name:"暴雪", type:"冰", pow:90, acc:85, pp:10},
+  spirit:{name:"靈擊", type:"靈", pow:50, acc:100, pp:25},
+  hex:{name:"咒縛", type:"靈", pow:75, acc:95, pp:20},
+  starburst:{name:"星核", type:"靈", pow:95, acc:90, pp:8},
+  sting:{name:"蟲刺", type:"蟲", pow:40, acc:100, pp:35},
+  silk:{name:"絲縛", type:"蟲", pow:55, acc:95, pp:25},
+  swarm:{name:"蟲潮", type:"蟲", pow:80, acc:90, pp:15},
+  draco:{name:"龍息", type:"龍", pow:60, acc:100, pp:20},
+  wyrm:{name:"龍擊", type:"龍", pow:90, acc:90, pp:10},
+  struggle:{name:"掙扎", type:"普", pow:40, acc:100, pp:1}
 };
 
 const SPECIES = {
@@ -1346,9 +1366,44 @@ function expToNext(lv){ return lv*lv*lv; }
 function movesFor(sid, lv){
   return SPECIES[sid].learn.filter(x=>x[0]<=lv).map(x=>x[1]).slice(-4);
 }
+function maxPp(id){ return (MOVES[id] && MOVES[id].pp) || 20; }
+function ensurePp(mon){
+  if(!mon) return mon;
+  if(!mon.pp || typeof mon.pp!=="object") mon.pp = {};
+  (mon.moves||[]).forEach(id=>{
+    if(mon.pp[id]==null) mon.pp[id] = maxPp(id);
+    mon.pp[id] = clamp(mon.pp[id], 0, maxPp(id));
+  });
+  return mon;
+}
+function restorePp(mon){
+  ensurePp(mon);
+  (mon.moves||[]).forEach(id=>{ mon.pp[id] = maxPp(id); });
+}
+function ppLeft(mon, id){
+  if(id==="struggle") return 1;
+  ensurePp(mon);
+  return mon.pp[id]||0;
+}
+function spendPp(mon, id){
+  if(!mon || id==="struggle") return;
+  ensurePp(mon);
+  mon.pp[id] = Math.max(0, (mon.pp[id]||0)-1);
+}
+function hasMovePp(mon){
+  return (mon.moves||[]).some(id=>ppLeft(mon,id)>0);
+}
+function learnMove(mon, id){
+  if(!id || mon.moves.includes(id)) return;
+  if(mon.moves.length<4) mon.moves.push(id);
+  else mon.moves = mon.moves.slice(1).concat([id]);
+  ensurePp(mon);
+  mon.pp[id] = maxPp(id);
+}
 function createMon(sid, lv){
-  const mon = { uid:uid(), sid, lv, exp:0, moves:movesFor(sid,lv) };
+  const mon = { uid:uid(), sid, lv, exp:0, moves:movesFor(sid,lv), pp:{} };
   mon.hp = maxHp(mon);
+  restorePp(mon);
   return mon;
 }
 function cloneMon(m){ return JSON.parse(JSON.stringify(m)); }
@@ -1365,10 +1420,22 @@ function isFaint(m){ return m.hp<=0; }
 function living(list){ return list.filter(m=>!isFaint(m)); }
 
 const ITEMS = {
-  potion:{ name:"傷藥", price:300, desc:"回復 50 HP" },
-  super:{ name:"好傷藥", price:800, desc:"回復 120 HP" },
-  ball:{ name:"靈核", price:250, desc:"捕捉野生核獸" },
-  great:{ name:"高級核", price:700, desc:"較容易捕捉" }
+  potion:{
+    name:"傷藥", price:300, desc:"回復 50 HP",
+    note:"對隊伍中一隻核獸回復 50 HP。地圖與戰鬥都可用。瀕死無法喝；HP 已滿無效。多出的回復會捨去。"
+  },
+  super:{
+    name:"好傷藥", price:800, desc:"回復 120 HP",
+    note:"對隊伍中一隻核獸回復 120 HP。地圖與戰鬥都可用。瀕死無法喝；HP 已滿無效。多出的回復會捨去。"
+  },
+  ball:{
+    name:"靈核", price:250, desc:"捕捉野生核獸",
+    note:"只能在野外戰鬥對野生核獸使用。成功率看對方剩餘 HP 與種族捕捉率。訓練家戰鬥不能用。"
+  },
+  great:{
+    name:"高級核", price:700, desc:"較容易捕捉",
+    note:"只能在野外戰鬥使用。捕捉成功率約為靈核的 1.8 倍。訓練家戰鬥不能用。"
+  }
 };
 
 const MAPS = {
@@ -1788,6 +1855,8 @@ function persist(){
 function normalizeSave(data){
   if(!data || !data.party) return null;
   data.flags = Object.assign({gym1:false,gym2:false,gym3:false,gym4:false,beaten:{}}, data.flags||{});
+  (data.party||[]).forEach(ensurePp);
+  (data.box||[]).forEach(ensurePp);
   return data;
 }
 function loadSave(){
@@ -1827,14 +1896,20 @@ function exportCode(){
 function importCode(code){
   const data = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
   if(!data || !data.party) throw new Error("格式不對");
-  S = data;
+  S = normalizeSave(data);
   persist();
 }
 
 function markSeen(sid){ S.seen[sid]=1; }
 function markCaught(sid){ S.caught[sid]=1; S.seen[sid]=1; }
 function firstAlive(){ return S.party.findIndex(m=>!isFaint(m)); }
-function healAll(){ S.party.forEach(m => m.hp = maxHp(m)); }
+function healAll(){
+  const all = (S.party||[]).concat(S.box||[]);
+  all.forEach(m=>{
+    m.hp = maxHp(m);
+    restorePp(m);
+  });
+}
 function addMon(mon){
   markCaught(mon.sid);
   if(S.party.length<6){ S.party.push(mon); return "party"; }
@@ -2173,7 +2248,7 @@ function facingTile(){ return { x:S.x+dir.x, y:S.y+dir.y, ch:tileAt(S.map,S.x+di
 function interact(){
   if(busy || walk.active) return;
   const t = tileAt(S.map,S.x,S.y);
-  if(t==="H"){ healAll(); persist(); openDialog("治療臺",["核獸的傷勢已完全恢復。"]); return; }
+  if(t==="H"){ healAll(); persist(); openDialog("治療臺",["傷勢與招式次數已完全恢復。"]); return; }
   if(t==="S"){ openShop(); return; }
   const f = facingTile();
   const npc = npcAt(f.x,f.y);
@@ -2213,8 +2288,11 @@ function openShop(){
   function render(){
     const rows = Object.keys(ITEMS).map(k=>{
       const it = ITEMS[k];
-      return `<div class="row"><div class="l">${it.name}<span class="muted"> ◎${it.price}</span></div>
-        <button data-buy="${k}">買</button></div>`;
+      return `<div class="row shop-row"><div class="l shop-info">
+        <div>${it.name} <span class="muted">◎${it.price}</span></div>
+        <span class="item-desc">${it.desc}</span>
+        <span class="item-note">${it.note}</span>
+      </div><button data-buy="${k}">買</button></div>`;
     }).join("");
     openSheet(`<h2>核具商店</h2><div class="sheet-body"><p class="muted">持有 ◎ ${S.money}</p>${rows}</div>
       <div class="sheet-actions"><button class="gold wide" id="shopClose">回到地圖</button></div>`);
@@ -2269,13 +2347,30 @@ function evoHint(m){
   if(need<=0) return "再升級就會進化成 "+to;
   return `再 ${need} 級 → ${to}`;
 }
+function hpPctOf(m){
+  const max = maxHp(m);
+  return max<=0 ? 0 : clamp(m.hp/max*100, 0, 100);
+}
+function hpTone(m){
+  const p = hpPctOf(m);
+  return p<=25 ? "low" : p<=50 ? "mid" : "";
+}
+function hpBarHtml(m){
+  const hp = maxHp(m);
+  return `<div class="hpmini"><div class="bar hp"><i class="${hpTone(m)}" style="width:${hpPctOf(m)}%"></i></div>
+    <span class="lab">HP ${Math.max(0,m.hp)}/${hp}</span></div>`;
+}
 function monRow(m){
   const sp = SPECIES[m.sid];
-  const hp = maxHp(m);
   const types = sp.types.map(typeBadge).join("");
-  return `<div class="l">${port(m.sid,true)}
-    <div>${sp.name} <span class="muted">Lv.${m.lv}</span><br>${types}
-    <span class="muted">HP ${Math.max(0,m.hp)}/${hp}　${evoHint(m)}</span></div></div>`;
+  const faint = isFaint(m) ? `<span class="tag-faint">瀕死</span>` : "";
+  return `<div class="l monrow">${port(m.sid,true)}
+    <div class="monmeta">
+      <div>${sp.name} <span class="muted">Lv.${m.lv}</span>${faint}</div>
+      <div>${types}</div>
+      ${hpBarHtml(m)}
+      <span class="muted">${evoHint(m)}</span>
+    </div></div>`;
 }
 
 function openParty(mode, onPick){
@@ -2324,14 +2419,18 @@ function openBox(){
 function openSummary(i){
   const m = S.party[i];
   const sp = SPECIES[m.sid];
-  const mv = m.moves.map(id=>`<div class="row"><div class="l">${typeBadge(MOVES[id].type)}${MOVES[id].name}</div>
-    <span class="muted">${MOVES[id].pow||"—"}</span></div>`).join("");
+  const mv = m.moves.map(id=>`<div class="row mv-row"><div class="l mv-info">
+      <div>${typeBadge(MOVES[id].type)}${MOVES[id].name}</div>
+      <span class="item-desc">${moveStatLine(MOVES[id])}</span>
+      <span class="item-note">剩餘次數 ${ppLeft(m,id)}／${maxPp(id)}</span>
+    </div></div>`).join("");
   const evo = `<p class="muted" style="margin:6px 0 8px">${evoHint(m)}</p>`;
   openSheet(`<h2>${sp.name}</h2>
     <div class="sheet-body" style="text-align:center">
       <img class="port" style="width:96px;height:96px;margin:4px auto" src="${sprURL(m.sid)}">
       <p>${sp.types.map(typeBadge).join("")} ${sp.cat}</p>
-      <p>Lv.${m.lv}　HP ${m.hp}/${maxHp(m)}　攻 ${statOf(m,"atk")}　防 ${statOf(m,"def")}　速 ${statOf(m,"spd")}</p>
+      <p>Lv.${m.lv}　攻 ${statOf(m,"atk")}　防 ${statOf(m,"def")}　速 ${statOf(m,"spd")}</p>
+      <div style="margin:8px auto;max-width:220px">${hpBarHtml(m)}</div>
       <p class="muted">經驗 ${m.lv>=50?"已滿":m.exp+" / "+expToNext(m.lv)}</p>
       <div class="bar exp" style="margin:6px auto 10px;max-width:220px"><i style="width:${expPct(m)}%"></i></div>${evo}${mv}
       <div class="grid2">
@@ -2360,7 +2459,11 @@ function openBag(mode){
   const keys = Object.keys(ITEMS);
   const rows = keys.map(k=>{
     const n = S.bag[k]||0;
-    return `<div class="row"><div class="l">${ITEMS[k].name}<span class="muted"> ×${n}<br>${ITEMS[k].desc}</span></div>
+    return `<div class="row bag-row"><div class="l bag-info">
+      <div>${ITEMS[k].name} <span class="muted">×${n}</span></div>
+      <span class="item-desc">${ITEMS[k].desc}</span>
+      <span class="item-note">${ITEMS[k].note}</span>
+    </div>
       <button data-use="${k}" ${n<=0?"disabled":""}>使用</button></div>`;
   }).join("");
   const actions = mode==="battle"
@@ -2510,7 +2613,8 @@ function openHelp(){
     <b>建議形式</b>：直式網頁 RPG。用 Safari 或 Chrome 打開，再「加入主畫面」。不要用 LINE／微信內建瀏覽器。<br>
     GitHub 網址請開資料夾網址，或直接開 <b>Replica Pokemon.html</b>。<br><br>
     <b>存檔</b>：進度存在這個瀏覽器裡。無痕、清快取、換瀏覽器、LINE／微信內建瀏覽器可能丟失。<br><br>
-    操作：方向鍵移動，確認交談／治療／商店，草叢會遇敵。<br><br>
+    操作：方向鍵移動，確認交談／治療／商店，草叢會遇敵。<br>
+    招式有次數限制，面板會顯示威力、命中與剩餘次數。治療臺會補滿 HP 與次數。<br><br>
     戰鬥右上角可切 1×／2×／3× 速度。選單有屬性相剋表。<br>
     遇到稀有種時，名稱旁會出現金色「稀有」標籤。<br><br>
     「新的旅程」選好最初核獸後才會覆蓋舊存檔；覆蓋前會另存一份，標題可按「恢復上一份存檔」。重要進度也可用選單匯出備份碼。
@@ -2942,7 +3046,7 @@ function renderBattle(){
 }
 
 function battleBtns(list){
-  $("bcmd").innerHTML = list.map((x,i)=>`<button data-b="${i}" ${x.dis?"disabled":""}>${x.t}</button>`).join("");
+  $("bcmd").innerHTML = list.map((x,i)=>`<button data-b="${i}" class="${x.cls||""}" ${x.dis?"disabled":""}>${x.t}</button>`).join("");
   $("bcmd").querySelectorAll("button").forEach(b=>{
     b.onclick = ()=> list[+b.getAttribute("data-b")].fn();
   });
@@ -3020,14 +3124,29 @@ function battleCmd(){
 
 function moveMenu(){
   const you = S.party[battle.pi];
-  battleBtns(you.moves.map(id=>{
+  ensurePp(you);
+  const rows = you.moves.map(id=>{
     const mv = MOVES[id];
-    const pow = mv.pow==null ? "—" : mv.pow;
+    const left = ppLeft(you, id);
+    const empty = left<=0;
     return {
-      t: `<span class="mv-l">${typeBadge(mv.type)}${mv.name}</span><span class="mv-pow">威力 ${pow}</span>`,
+      cls:"mv",
+      dis: empty,
+      t: `<span class="mv-top"><span class="mv-l">${typeBadge(mv.type)}${mv.name}</span><span class="mv-pp${empty?" out":""}">${left}/${maxPp(id)}</span></span>
+        <span class="mv-sub">${moveStatLine(mv)}</span>`,
       fn:()=> playerAct({type:"move", id})
     };
-  }).concat([{ t:"返回", fn:battleCmd }]));
+  });
+  if(!hasMovePp(you)){
+    const st = MOVES.struggle;
+    rows.push({
+      cls:"mv",
+      t: `<span class="mv-top"><span class="mv-l">${typeBadge(st.type)}${st.name}</span><span class="mv-pp">∞</span></span>
+        <span class="mv-sub">${moveStatLine(st)}　會反傷</span>`,
+      fn:()=> playerAct({type:"move", id:"struggle"})
+    });
+  }
+  battleBtns(rows.concat([{ t:"返回", fn:battleCmd }]));
 }
 
 function switchMenu(must){
@@ -3119,13 +3238,16 @@ async function afterPlayerItem(){
 function aiAct(){
   const foe = battle.foe;
   const you = S.party[battle.pi];
-  let best = foe.moves[0], score = -1;
-  foe.moves.forEach(id=>{
+  ensurePp(foe);
+  const usable = foe.moves.filter(id=>ppLeft(foe,id)>0);
+  if(!usable.length) return {type:"move", id:"struggle"};
+  let best = usable[0], score = -1;
+  usable.forEach(id=>{
     const mv = MOVES[id];
     const s = (mv.pow||0) * typeMul(mv.type, SPECIES[you.sid].types);
     if(s>score){ score=s; best=id; }
   });
-  if(Math.random()<0.25) best = pick(foe.moves);
+  if(Math.random()<0.25) best = pick(usable);
   return {type:"move", id:best};
 }
 
@@ -3138,10 +3260,17 @@ async function doAct(side, act){
   }
   const atk = side==="p" ? S.party[battle.pi] : battle.foe;
   const def = side==="p" ? battle.foe : S.party[battle.pi];
-  const mv = MOVES[act.id];
+  const mv = MOVES[act.id] || MOVES.struggle;
+  if(act.id!=="struggle" && ppLeft(atk, act.id)<=0){
+    blog(`${monName(atk)} 的 ${mv.name} 次數用盡了！`);
+    await wait(220);
+    return;
+  }
+  spendPp(atk, act.id);
+  persist();
   blog(`${monName(atk)} 使出 ${mv.name}！`);
   await wait(180);
-  if(Math.random()*100 > mv.acc){
+  if(Math.random()*100 > (mv.acc||100)){
     blog("沒有打中！");
     const miss = side==="p" ? bat.f : bat.p;
     await tween(200, p => { miss.x = Math.sin(p*Math.PI)*18*(side==="p"?1:-1); });
@@ -3160,6 +3289,13 @@ async function doAct(side, act){
   if(eff>1.5) extra += " 效果絕佳！";
   else if(eff<1 && eff>0) extra += " 似乎不太有效…";
   blog(extra);
+  if(act.id==="struggle"){
+    const recoil = Math.max(1, Math.floor(maxHp(atk)/4));
+    atk.hp = Math.max(0, atk.hp-recoil);
+    paintHud();
+    blog(`${monName(atk)} 因反作用力受到 ${recoil} 傷害！`);
+    await wait(280);
+  }
   await wait(380);
 }
 
@@ -3219,11 +3355,7 @@ async function gainExp(foe){
       const old = maxHp(you);
       you.lv++;
       you.hp += maxHp(you)-old;
-      SPECIES[you.sid].learn.filter(x=>x[0]===you.lv).forEach(x=>{
-        const id=x[1]; if(you.moves.includes(id)) return;
-        if(you.moves.length<4) you.moves.push(id);
-        else you.moves = you.moves.slice(1).concat([id]);
-      });
+      SPECIES[you.sid].learn.filter(x=>x[0]===you.lv).forEach(x=> learnMove(you, x[1]));
       blog(`${monName(you)} 升到 Lv.${you.lv}！`);
       const el = $("pExp");
       if(el){ el.style.transition="none"; el.style.width="100%"; }
@@ -3269,6 +3401,7 @@ async function resolveCatch(ballKey){
     }
     const got = cloneMon(foe);
     got.hp = Math.max(1, got.hp);
+    restorePp(got);
     const where = addMon(got);
     blog(`捕捉成功！${monName(got)} ${where==="box"?"已送入核倉。":"加入隊伍！"}`);
     await wait(700);
