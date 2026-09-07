@@ -133,6 +133,11 @@
     background:#f4ead0;color:#2a2214;border:3px solid #2c2418;font-size:15px;line-height:1.5;font-weight:800}
   #bcmd{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:0 0 auto;
     padding:10px 12px max(10px,env(safe-area-inset-bottom));background:#1a2740}
+  #bcmd button{display:flex;align-items:center;justify-content:space-between;gap:6px;
+    min-height:48px;padding:8px 10px;text-align:left}
+  #bcmd button .mv-l{display:flex;align-items:center;gap:4px;min-width:0}
+  #bcmd button .mv-pow{flex:0 0 auto;font-size:11px;font-weight:800;color:var(--gold);
+    letter-spacing:.02em}
 
   #overlay{position:absolute;inset:0;background:rgba(6,10,16,.72);display:none;
     z-index:20;flex-direction:column;justify-content:flex-end;touch-action:auto;
@@ -636,40 +641,41 @@ function shadeHex(hex, amt){
   r = clamp(r+amt,0,255); gv = clamp(gv+amt,0,255); b = clamp(b+amt,0,255);
   return "#"+((1<<24)+(r<<16)+(gv<<8)+b).toString(16).slice(1);
 }
-const _up3 = new Map();
-function up3(grid){
+const _up2 = new Map();
+function up2(grid){
   const key = grid.join("\n");
-  if(_up3.has(key)) return _up3.get(key);
+  if(_up2.has(key)) return _up2.get(key);
   const h = grid.length, w = grid[0].length;
   const at = (x,y)=>{
     const xx = x<0?0:x>w-1?w-1:x, yy = y<0?0:y>h-1?h-1:y;
     return grid[yy][xx];
   };
-  const out = new Array(h*3);
+  const out = new Array(h*2);
   for(let y=0;y<h;y++){
-    let r0="", r1="", r2="";
+    let r0="", r1="";
     for(let x=0;x<w;x++){
       const A=at(x-1,y-1), B=at(x,y-1), C=at(x+1,y-1);
       const D=at(x-1,y),   E=at(x,y),   F=at(x+1,y);
       const G=at(x-1,y+1), H=at(x,y+1), I=at(x+1,y+1);
-      let e0=E,e1=E,e2=E,e3=E,e4=E,e5=E,e6=E,e7=E,e8=E;
+      let e0=E, e1=E, e2=E, e3=E;
       if(B!==H && D!==F){
         e0 = D===B ? D : E;
-        e1 = (D===B && E!==C) || (B===F && E!==A) ? B : E;
-        e2 = B===F ? F : E;
-        e3 = (D===B && E!==G) || (D===H && E!==A) ? D : E;
-        e5 = (B===F && E!==I) || (H===F && E!==C) ? F : E;
-        e6 = D===H ? D : E;
-        e7 = (D===H && E!==I) || (H===F && E!==G) ? H : E;
-        e8 = H===F ? F : E;
+        e1 = B===F ? F : E;
+        e2 = D===H ? D : E;
+        e3 = H===F ? F : E;
+        if(e0===E && A===B && A===D && A!==".") e0 = A;
+        if(e1===E && C===B && C===F && C!==".") e1 = C;
+        if(e2===E && G===D && G===H && G!==".") e2 = G;
+        if(e3===E && I===F && I===H && I!==".") e3 = I;
       }
-      r0+=e0+e1+e2; r1+=e3+e4+e5; r2+=e6+e7+e8;
+      r0+=e0+e1; r1+=e2+e3;
     }
-    out[y*3]=r0; out[y*3+1]=r1; out[y*3+2]=r2;
+    out[y*2]=r0; out[y*2+1]=r1;
   }
-  _up3.set(key, out);
+  _up2.set(key, out);
   return out;
 }
+function up4(grid){ return up2(up2(grid)); }
 function hexRgb(hex){
   if(!hex || hex[0]!=="#") return [255,255,255];
   let h = hex.slice(1);
@@ -678,13 +684,20 @@ function hexRgb(hex){
   return [(n>>16)&255,(n>>8)&255,n&255];
 }
 const _pixCache = new Map();
+function mixRgb(a,b,t){
+  return [
+    Math.round(a[0]+(b[0]-a[0])*t),
+    Math.round(a[1]+(b[1]-a[1])*t),
+    Math.round(a[2]+(b[2]-a[2])*t)
+  ];
+}
 function rasterSprite(grid, pal, opt){
   const hq = opt.hq!==false && grid[0].length<=24;
   const flip = !!opt.flip, sil = !!opt.sil, flash = opt.flash>0.45;
-  const key = grid.join("\n")+JSON.stringify(pal)+(flip?"f":"")+(sil?"s":"")+(flash?"w":"")+(hq?"3":"");
+  const key = grid.join("\n")+JSON.stringify(pal)+(flip?"f":"")+(sil?"s":"")+(flash?"w":"")+(hq?"4a":"");
   if(_pixCache.has(key)) return _pixCache.get(key);
-  if(hq) grid = up3(grid);
-  const w = grid[0].length, h = grid.length, pad = 1;
+  if(hq) grid = up4(grid);
+  const w = grid[0].length, h = grid.length, pad = 2;
   const cw = w+pad*2, ch = h+pad*2;
   const c = document.createElement("canvas");
   c.width = cw; c.height = ch;
@@ -702,26 +715,41 @@ function rasterSprite(grid, pal, opt){
     if(a<255 && data[i+3]>=a) return;
     data[i]=rgb[0]; data[i+1]=rgb[1]; data[i+2]=rgb[2]; data[i+3]=a;
   };
+  const rgbOf = (chv)=> sil ? [26,31,40] : (flash ? [255,255,255] : hexRgb(pal[chv]||"#fff"));
   const outline = hexRgb(pal.o || "#140e0a");
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
       const chv = pix(x,y);
       if(chv===".") continue;
-      let col = sil ? [26,31,40] : (flash ? [255,255,255] : hexRgb(pal[chv]||"#fff"));
+      let col = rgbOf(chv);
       if(!sil && !flash && (pix(x-1,y)==="."||pix(x+1,y)==="."||pix(x,y-1)==="."||pix(x,y+1)===".")){
-        col = [Math.max(0,col[0]-20), Math.max(0,col[1]-20), Math.max(0,col[2]-20)];
+        col = [Math.max(0,col[0]-18), Math.max(0,col[1]-18), Math.max(0,col[2]-18)];
       }
       put(x+pad, y+pad, col, 255);
     }
   }
   if(!sil && !flash){
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        if(pix(x,y)!==".") continue;
+        const pairs = [[-1,0,0,-1],[1,0,0,-1],[-1,0,0,1],[1,0,0,1]];
+        for(let i=0;i<pairs.length;i++){
+          const p = pairs[i];
+          const a = pix(x+p[0], y+p[1]), b = pix(x+p[2], y+p[3]);
+          if(a==="."||b===".") continue;
+          put(x+pad, y+pad, mixRgb(rgbOf(a), rgbOf(b), 0.5), 150);
+          break;
+        }
+      }
+    }
     for(let y=-1;y<=h;y++){
       for(let x=-1;x<=w;x++){
         if(pix(x,y)!==".") continue;
         const o = (pix(x-1,y)!==".")+(pix(x+1,y)!==".")+(pix(x,y-1)!==".")+(pix(x,y+1)!==".");
         const d = (pix(x-1,y-1)!==".")+(pix(x+1,y-1)!==".")+(pix(x-1,y+1)!==".")+(pix(x+1,y+1)!==".");
         if(o>=1) put(x+pad, y+pad, outline, 255);
-        else if(d>=2) put(x+pad, y+pad, outline, 96);
+        else if(d>=2) put(x+pad, y+pad, outline, 110);
+        else if(d===1) put(x+pad, y+pad, outline, 56);
       }
     }
   }
@@ -758,10 +786,10 @@ function sprURL(sid, sil){
   const key = sid+(sil?"_s":"");
   if(sprCache[key]) return sprCache[key];
   const c = document.createElement("canvas");
-  c.width = 128; c.height = 128;
+  c.width = 160; c.height = 160;
   const g = c.getContext("2d");
   g.imageSmoothingEnabled = false;
-  drawSprite(g, sid, 64, 94, 116, {sil:!!sil});
+  drawSprite(g, sid, 80, 118, 148, {sil:!!sil});
   sprCache[key] = c.toDataURL();
   return sprCache[key];
 }
@@ -2994,7 +3022,11 @@ function moveMenu(){
   const you = S.party[battle.pi];
   battleBtns(you.moves.map(id=>{
     const mv = MOVES[id];
-    return { t: typeBadge(mv.type)+mv.name, fn:()=> playerAct({type:"move", id}) };
+    const pow = mv.pow==null ? "—" : mv.pow;
+    return {
+      t: `<span class="mv-l">${typeBadge(mv.type)}${mv.name}</span><span class="mv-pow">威力 ${pow}</span>`,
+      fn:()=> playerAct({type:"move", id})
+    };
   }).concat([{ t:"返回", fn:battleCmd }]));
 }
 
