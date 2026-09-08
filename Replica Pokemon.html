@@ -174,6 +174,8 @@
   .tag-status.slp{background:#90caf9}
   .tag-status.frz{background:#e1f5fe}
   .tag-status.cnf{background:#f8bbd0}
+  .tag-pend{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:6px;
+    background:#f0c14b;color:#2a1d05;font-size:10px;font-weight:900}
   .shop-row,.bag-row{align-items:flex-start}
   .shop-info,.bag-info{flex-direction:column;align-items:flex-start;gap:3px}
   .mv-row{align-items:flex-start;touch-action:manipulation}
@@ -1548,10 +1550,45 @@ function spendPp(mon, id){
 function hasMovePp(mon){
   return (mon.moves||[]).some(id=>ppLeft(mon,id)>0);
 }
+function knownMove(mon, id){
+  return !!(mon && ((mon.moves||[]).includes(id) || (mon.pending||[]).includes(id)));
+}
+function pendingList(mon){ return (mon && mon.pending) ? mon.pending : []; }
+function pendingAll(){ return (S.party||[]).concat(S.box||[]).filter(m=>pendingList(m).length); }
+function pendingCount(){ return pendingAll().reduce((n,m)=>n+pendingList(m).length, 0); }
+function stashPending(mon, id){
+  if(!id || !MOVES[id] || knownMove(mon, id)) return false;
+  if(!mon.pending) mon.pending = [];
+  mon.pending.push(id);
+  persist();
+  return true;
+}
+function dropPending(mon, id){
+  if(!mon || !mon.pending) return;
+  mon.pending = mon.pending.filter(x=>x!==id);
+  persist();
+}
+function cleanPending(mon){
+  if(!mon) return;
+  const have = new Set(mon.moves||[]);
+  mon.pending = (mon.pending||[]).filter(id=>MOVES[id] && !have.has(id));
+  const seen = new Set();
+  mon.pending = mon.pending.filter(id=>{ if(seen.has(id)) return false; seen.add(id); return true; });
+}
+function applyPending(mon, slot, id){
+  if(!mon || !MOVES[id] || slot<0 || slot>=mon.moves.length) return null;
+  const old = mon.moves[slot];
+  mon.moves[slot] = id;
+  ensurePp(mon);
+  mon.pp[id] = maxPp(id);
+  dropPending(mon, id);
+  return old;
+}
 function learnMove(mon, id){
-  if(!id || mon.moves.includes(id)) return false;
+  if(!id || (mon.moves||[]).includes(id)) return false;
   if(mon.moves.length>=4) return false;
   mon.moves.push(id);
+  if(mon.pending) mon.pending = mon.pending.filter(x=>x!==id);
   ensurePp(mon);
   mon.pp[id] = maxPp(id);
   return true;
@@ -1564,12 +1601,18 @@ function swapMoves(mon, a, b){
   persist();
 }
 async function offerLearn(mon, id){
-  if(!id || !MOVES[id] || mon.moves.includes(id)) return;
+  if(!id || !MOVES[id] || knownMove(mon, id)) return;
   if(mon.moves.length<4){
     learnMove(mon, id);
     persist();
     blog(`${monName(mon)} 學會了 ${MOVES[id].name}！`);
     await wait(450);
+    return;
+  }
+  if(AUTO.on){
+    stashPending(mon, id);
+    blog(`${monName(mon)} 想學 ${MOVES[id].name}，已放入保留區（掛機結束後再處理）。`);
+    await wait(260);
     return;
   }
   blog(`${monName(mon)} 想學 ${MOVES[id].name}！可是已經有四招。`);
@@ -1584,6 +1627,7 @@ async function offerLearn(mon, id){
   mon.moves[idx] = id;
   ensurePp(mon);
   mon.pp[id] = maxPp(id);
+  dropPending(mon, id);
   persist();
   blog(`遺忘了 ${MOVES[old].name}，學會了 ${MOVES[id].name}！`);
   await wait(480);
@@ -1628,7 +1672,7 @@ function bindHold(el, onTap, onHold){
   el.addEventListener("contextmenu", e=> e.preventDefault());
 }
 function createMon(sid, lv){
-  const mon = { uid:uid(), sid, lv, exp:0, moves:movesFor(sid,lv), pp:{} };
+  const mon = { uid:uid(), sid, lv, exp:0, moves:movesFor(sid,lv), pp:{}, pending:[] };
   mon.hp = maxHp(mon);
   restorePp(mon);
   return mon;
@@ -2201,7 +2245,7 @@ const GYMS = {
   gym8:{ name:"皇龍館", badge:"皇龍徽章", type:"龍" }
 };
 const GYM_KEYS = Object.keys(GYMS);
-const AUTO = { on:false, mode:null, hunt:null, pick:null };
+const AUTO = { on:false, mode:null, hunt:null, pick:null, touchLock:0 };
 function partyHasType(t){ return !!(S && S.party.some(m=>!isFaint(m) && SPECIES[m.sid].types.includes(t))); }
 function partyKnows(id){ return !!(S && S.party.some(m=>!isFaint(m) && (m.moves||[]).includes(id))); }
 function canSurf(){ return !!(S && S.flags.gym2 && partyHasType("水")); }
@@ -2295,8 +2339,8 @@ function normalizeSave(data){
   data.visited = data.visited||{};
   if(!data.lastHeal) data.lastHeal = { map:"town", x:3, y:3 };
   if(!data.lastHunt) data.lastHunt = null;
-  (data.party||[]).forEach(m=>{ ensurePp(m); backfillMoves(m); });
-  (data.box||[]).forEach(m=>{ ensurePp(m); backfillMoves(m); });
+  (data.party||[]).forEach(m=>{ ensurePp(m); backfillMoves(m); cleanPending(m); });
+  (data.box||[]).forEach(m=>{ ensurePp(m); backfillMoves(m); cleanPending(m); });
   return data;
 }
 function loadSave(){
@@ -2845,7 +2889,7 @@ function openMenu(fromSub){
   busy = true;
   openSheet(`<h2>選單</h2>
     <div class="sheet-body">
-      <button class="listbtn" id="mParty">核獸隊伍</button>
+      <button class="listbtn" id="mParty">核獸隊伍${pendingCount()?`　（待學 ${pendingCount()}）`:""}</button>
       <button class="listbtn" id="mBag">背包</button>
       <button class="listbtn" id="mDex">圖鑑</button>
       <button class="listbtn" id="mChart">屬性相剋</button>
@@ -2897,7 +2941,7 @@ function monRow(m){
   const faint = isFaint(m) ? `<span class="tag-faint">瀕死</span>` : "";
   return `<div class="l monrow">${port(m.sid,true)}
     <div class="monmeta">
-      <div>${sp.name} <span class="muted">Lv.${m.lv}</span>${faint}${statusTag(m)}</div>
+      <div>${sp.name} <span class="muted">Lv.${m.lv}</span>${faint}${statusTag(m)}${pendingList(m).length?`<span class="tag-pend">待學 ${pendingList(m).length}</span>`:""}</div>
       <div>${types}</div>
       ${hpBarHtml(m)}
       <span class="muted">${evoHint(m)}</span>
@@ -2914,9 +2958,11 @@ function openParty(mode, onPick){
   const boxHint = S.party.length>=6
     ? (S.box.length?"隊伍已滿 6 隻。多的在核倉，可進去交換。":"隊伍已滿 6 隻。再捕捉會自動送進核倉。")
     : (S.box.length?`核倉 ${S.box.length} 隻，有空位可叫回。`:"核倉是空的。捕捉超過 6 隻會自動送進核倉。");
+  const pendBtn = mode==="field" && pendingCount() ? `<button class="listbtn" id="pPend">處理保留招式（${pendingCount()}）</button>` : "";
   openSheet(`<h2>隊伍 ${S.party.length}/6</h2>
     <div class="sheet-body">${rows}
       <p class="muted">${boxHint}</p>
+      ${pendBtn}
       ${canBox?`<button class="listbtn" id="pBox">${S.party.length>=6?"打開核倉（交換）":"從核倉叫回"}</button>`:""}
     </div>
     <div class="sheet-actions">${actions}</div>`);
@@ -2928,6 +2974,8 @@ function openParty(mode, onPick){
     };
   });
   if(canBox) $("pBox").onclick = openBox;
+  const pend = $("pPend");
+  if(pend) pend.onclick = ()=> openPendingReview(()=>openParty("field"));
   const back = $("pBack");
   if(back) back.onclick = ()=>{
     if(mode==="battle"){ closeOverlay(); busy=false; battleCmd(); }
@@ -2999,6 +3047,7 @@ function openSummary(i){
       <p class="muted">經驗 ${m.lv>=50?"已滿":m.exp+" / "+expToNext(m.lv)}</p>
       <div class="bar exp" style="margin:6px auto 10px;max-width:220px"><i style="width:${expPct(m)}%"></i></div>${evo}
       <p class="muted" style="margin:0 0 8px">長按招式，再點另一招可換位置（最多四招）</p>${mv}
+      ${pendingList(m).length?`<p class="muted" style="margin:10px 0 6px">保留區（戰鬥中不能用，點選處理）</p>${pendingList(m).map(id=>`<button class="listbtn" data-pend="${id}"><div class="l mv-info">${typeBadge(MOVES[id].type)}${MOVES[id].name}<span class="item-desc">${moveStatLine(MOVES[id])}</span></div></button>`).join("")}`:""}
       <div class="grid2">
         <button id="sumUp"${i===0?" disabled":""}>上移</button>
         <button id="sumBox"${S.party.length<=1?" disabled":""}>送入核倉</button>
@@ -3034,6 +3083,9 @@ function openSummary(i){
         toast("再點另一招交換位置");
       }
     );
+  });
+  sheet.querySelectorAll("[data-pend]").forEach(b=>{
+    b.onclick = ()=> openPendingChoice(m, b.getAttribute("data-pend"), ()=>openSummary(i));
   });
   $("sumBack").onclick = ()=> openParty("field");
   $("sumWorld").onclick = closeToWorld;
@@ -3103,7 +3155,7 @@ function openAutoMenu(){
   }).join("");
   openSheet(`<h2>自動尋怪</h2>
     <div class="sheet-body">
-      <p class="muted" style="line-height:1.7;margin-bottom:10px">只在有草叢的地圖走動，不進館、不進城鎮。低血或全滅會立刻治療，再回到掛機點。</p>
+      <p class="muted" style="line-height:1.7;margin-bottom:10px">只在有草叢的地圖走動，不進館、不進城鎮。低血或全滅會立刻治療，再回到掛機點。掛機時新招不會彈窗，滿四招會進保留區。觸碰螢幕就會停止自動。</p>
       <p class="muted" style="margin-bottom:8px">掛機點：<b>${MAPS[chosen]?MAPS[chosen].name:huntName(pick)}</b>${canHunt(S.map)?"（可改成你現在站的草地）":""}</p>
       ${rows || `<p class="muted">還沒走過草地。開始後會先去翠葉道。</p>`}
       <button class="listbtn" id="auFarm">1. 自動尋怪打怪${AUTO.on&&AUTO.mode==="farm"?"　（進行中）":""}</button>
@@ -3120,8 +3172,103 @@ function openAutoMenu(){
   });
   $("auFarm").onclick = ()=>{ startAuto("farm", chosen); closeToWorld(); };
   $("auCatch").onclick = ()=>{ startAuto("catch", chosen); closeToWorld(); };
-  $("auOff").onclick = ()=>{ AUTO.on=false; AUTO.mode=null; toast("已關閉自動"); openMenu(true); };
+  $("auOff").onclick = stopAuto;
   $("auBack").onclick = ()=> openMenu(true);
+}
+function refreshAutoHud(){
+  if(!S || !$("place") || !MAPS[S.map]) return;
+  const badges = badgeCount();
+  $("place").textContent = MAPS[S.map].name + (badges?" · 徽章"+badges:"" ) + (AUTO.on?" · 自動":"") + (S.surf?" · 游泳":"");
+}
+function interruptAuto(){
+  if(!AUTO.on) return false;
+  if((AUTO.touchLock||0) > performance.now()) return false;
+  AUTO.on = false;
+  AUTO.mode = null;
+  refreshAutoHud();
+  toast(pendingCount()?"已停止自動。有保留招式，可在隊伍處理。":"已停止自動");
+  return true;
+}
+function stopAuto(){
+  AUTO.on = false;
+  AUTO.mode = null;
+  refreshAutoHud();
+  toast("已關閉自動");
+  if(pendingCount()){
+    openPendingReview(()=>openMenu(true));
+    return;
+  }
+  openMenu(true);
+}
+function pendingMoveRow(id){
+  const mv = MOVES[id]||{name:id,type:"普"};
+  return `<div class="l mv-info">${typeBadge(mv.type)}${mv.name}<span class="item-desc">${moveStatLine(mv)}</span></div>`;
+}
+function openPendingReview(onBack){
+  const mons = pendingAll();
+  if(!mons.length){ if(onBack) onBack(); else openMenu(true); return; }
+  const blocks = mons.map((m,mi)=>{
+    const rows = pendingList(m).map(id=>`<button class="listbtn" data-mi="${mi}" data-id="${id}">${pendingMoveRow(id)}</button>`).join("");
+    return `<p style="font-weight:800;margin:10px 0 6px">${monName(m)}　Lv.${m.lv}</p>${rows}`;
+  }).join("");
+  openSheet(`<h2>保留招式 ${pendingCount()}</h2>
+    <div class="sheet-body">
+      <p class="muted" style="line-height:1.7;margin-bottom:8px">掛機時學會、但當時已有四招的技能會放在這裡，戰鬥中不能用。點一招來替換舊招，或刪除。</p>
+      ${blocks}
+    </div>
+    <div class="sheet-actions"><button class="gold wide" id="pendLater">稍後再處理</button></div>`);
+  sheet.querySelectorAll("[data-id]").forEach(b=>{
+    b.onclick = ()=>{
+      const mon = mons[+b.getAttribute("data-mi")];
+      openPendingChoice(mon, b.getAttribute("data-id"), ()=>openPendingReview(onBack));
+    };
+  });
+  $("pendLater").onclick = ()=> onBack ? onBack() : openMenu(true);
+}
+function openPendingChoice(mon, id, onBack){
+  const mv = MOVES[id];
+  if(!mv || !pendingList(mon).includes(id)){ if(onBack) onBack(); return; }
+  openSheet(`<h2>${mv.name}</h2>
+    <div class="sheet-body">
+      <p>${typeBadge(mv.type)}${mv.name}</p>
+      <p class="item-desc">${moveStatLine(mv)}</p>
+      <p class="muted" style="margin:10px 0 8px">這招還在保留區，戰鬥中不能使用。</p>
+      ${mon.moves.length<4?`<button class="listbtn" id="pcLearn">直接學會（還有空位）</button>`:""}
+      <button class="listbtn" id="pcSwap">替換舊招式</button>
+      <button class="listbtn ghost" id="pcDel">刪除這招</button>
+    </div>
+    <div class="sheet-actions"><button class="wide" id="pcBack">返回</button></div>`);
+  const learnBtn = $("pcLearn");
+  if(learnBtn) learnBtn.onclick = ()=>{
+    if(learnMove(mon, id)) toast(monName(mon)+" 學會了 "+mv.name);
+    persist();
+    if(onBack) onBack();
+  };
+  $("pcSwap").onclick = ()=> openPendingReplace(mon, id, onBack);
+  $("pcDel").onclick = ()=>{
+    dropPending(mon, id);
+    toast("已刪除 "+mv.name);
+    if(onBack) onBack();
+  };
+  $("pcBack").onclick = ()=> onBack && onBack();
+}
+function openPendingReplace(mon, id, onBack){
+  const mv = MOVES[id];
+  const rows = mon.moves.map((mid,i)=>`<button class="listbtn" data-r="${i}">${pendingMoveRow(mid)}</button>`).join("");
+  openSheet(`<h2>用 ${mv.name} 替換？</h2>
+    <div class="sheet-body">
+      <p class="muted" style="margin-bottom:8px">點選要遺忘的舊招。被換下的招式會消失。</p>
+      ${rows}
+    </div>
+    <div class="sheet-actions"><button class="wide" id="prBack">返回</button></div>`);
+  sheet.querySelectorAll("[data-r]").forEach(b=>{
+    b.onclick = ()=>{
+      const old = applyPending(mon, +b.getAttribute("data-r"), id);
+      toast(old ? `遺忘 ${MOVES[old].name}，學會 ${mv.name}` : "替換失敗");
+      if(onBack) onBack();
+    };
+  });
+  $("prBack").onclick = ()=> openPendingChoice(mon, id, onBack);
 }
 function startAuto(mode, mapId){
   AUTO.on = true; AUTO.mode = mode;
@@ -3136,8 +3283,8 @@ function startAuto(mode, mapId){
     S.map = dest.map; S.x = dest.x; S.y = dest.y;
   }
   persist();
-  toast((mode==="catch"?"自動尋怪＋稀有捕捉：":"自動尋怪：")+MAPS[dest.map].name);
-}
+  AUTO.touchLock = performance.now() + 600;
+  toast((mode==="catch"?"自動尋怪＋稀有捕捉：":"自動尋怪：")+MAPS[dest.map].name+"。觸碰螢幕可停止。");
 function autoHealResume(){
   healAll();
   const dest = AUTO.hunt || S.lastHunt || defaultHunt();
@@ -3352,10 +3499,10 @@ function openHelp(){
     GitHub 網址請開資料夾網址，或直接開 <b>Replica Pokemon.html</b>。<br><br>
     <b>存檔</b>：進度存在這個瀏覽器裡。無痕、清快取、換瀏覽器、LINE／微信內建瀏覽器可能丟失。<br><br>
     操作：方向鍵移動，確認交談／治療／商店，草叢會遇敵。<br>
-    招式最多四招，含攻擊與變化（能力升降、灼傷／中毒／麻痺／睡眠／冰凍、回復、守住）。長按可換位置；第五招會詢問要換哪一招。<br>
+    招式最多四招，含攻擊與變化。長按可換位置；平時第五招會詢問要換哪一招。掛機升級不會彈窗，新招先放保留區，停止後再替換或刪除。<br>
     <b>游泳</b>：取得潮浪徽章，隊伍有水系，在水邊按確認下水。<br>
     <b>飛天</b>：取得雷翼徽章，隊伍有龍系或會翼斬，地區圖點已去過的城鎮。<br>
-    隊伍最多帶 6 隻，多的進核倉，可叫回或滿員交換。選單可開自動尋怪：先選走過的草地，低血立刻治療再回掛機點；第二模式遇稀有自動捕捉。<br><br>
+    隊伍最多帶 6 隻，多的進核倉，可叫回或滿員交換。選單可開自動尋怪：先選走過的草地，低血立刻治療再回掛機點；第二模式遇稀有自動捕捉。掛機中觸碰螢幕就會停止。<br><br>
     戰鬥右上角可切 1×／2×／3× 速度。選單有屬性相剋表。<br>
     遇到稀有種時，名稱旁會出現金色「稀有」標籤。<br><br>
     「新的旅程」選好最初核獸後才會覆蓋舊存檔；覆蓋前會另存一份，標題可按「恢復上一份存檔」。重要進度也可用選單匯出備份碼。
@@ -4505,7 +4652,16 @@ function padDirFromEvent(ev, el){
 $("btnA").onclick = interact;
 $("btnM").onclick = ()=> openMenu(false);
 
+$("app").addEventListener("pointerdown", ev=>{
+  if(!AUTO.on) return;
+  if(ev.target.closest("#spdBtn")) return;
+  if(ev.target.closest("#overlay")) return;
+  if(ev.target.closest("#title") || ev.target.closest("#starter")) return;
+  interruptAuto();
+}, true);
+
 window.addEventListener("keydown", e=>{
+  if(AUTO.on && !e.repeat) interruptAuto();
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
   if(e.key==="Escape"){
     if(overlay.classList.contains("on")){
