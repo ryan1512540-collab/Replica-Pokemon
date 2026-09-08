@@ -3285,6 +3285,7 @@ function startAuto(mode, mapId){
   persist();
   AUTO.touchLock = performance.now() + 600;
   toast((mode==="catch"?"自動尋怪＋稀有捕捉：":"自動尋怪：")+MAPS[dest.map].name+"。觸碰螢幕可停止。");
+}
 function autoHealResume(){
   healAll();
   const dest = AUTO.hunt || S.lastHunt || defaultHunt();
