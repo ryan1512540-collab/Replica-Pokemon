@@ -166,6 +166,14 @@
   .hpmini .lab{display:block;margin-top:3px;font-size:11px;font-weight:700;color:var(--muted)}
   .tag-faint{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:6px;
     background:#e85d5d;color:#fff;font-size:10px;font-weight:900}
+  .tag-status{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:6px;
+    color:#111;font-size:10px;font-weight:900}
+  .tag-status.brn{background:#ff8a65}
+  .tag-status.psn{background:#ce93d8}
+  .tag-status.par{background:#ffd54f}
+  .tag-status.slp{background:#90caf9}
+  .tag-status.frz{background:#e1f5fe}
+  .tag-status.cnf{background:#f8bbd0}
   .shop-row,.bag-row{align-items:flex-start}
   .shop-info,.bag-info{flex-direction:column;align-items:flex-start;gap:3px}
   .mv-row{align-items:flex-start;touch-action:manipulation}
@@ -359,7 +367,9 @@ function typeMul(atk, defs){
 }
 function typeBadge(t){ return `<span class="type" style="background:${TYPE_COLOR[t]||"#ccc"}">${t}</span>`; }
 function moveStatLine(mv){
-  return `威力 ${mv.pow==null?"—":mv.pow}　命中 ${mv.acc==null?"—":mv.acc}`;
+  const acc = mv.acc==null ? "—" : mv.acc;
+  const kind = mv.pow ? `威力 ${mv.pow}` : "變化";
+  return `${kind}　命中 ${acc}${mv.desc?"　"+mv.desc:""}`;
 }
 
 const SPRITES = {
@@ -880,44 +890,82 @@ function npcPal(color){
 }
 
 const MOVES = {
-  tackle:{name:"撞擊", type:"普", pow:40, acc:100, pp:35},
-  quick:{name:"電光", type:"普", pow:40, acc:100, pp:30, pri:1},
-  wing:{name:"翼斬", type:"普", pow:60, acc:100, pp:25},
-  ember:{name:"火花", type:"火", pow:40, acc:100, pp:35},
-  roar:{name:"炎吼", type:"火", pow:70, acc:95, pp:20},
-  flare:{name:"烈焰", type:"火", pow:80, acc:90, pp:15},
-  inferno:{name:"焚天", type:"火", pow:95, acc:85, pp:8},
-  watergun:{name:"水槍", type:"水", pow:40, acc:100, pp:35},
-  surge:{name:"浪潮", type:"水", pow:80, acc:90, pp:15},
-  leaf:{name:"葉片", type:"草", pow:40, acc:100, pp:35},
-  vine:{name:"藤鞭", type:"草", pow:55, acc:100, pp:25},
-  petal:{name:"花舞", type:"草", pow:80, acc:90, pp:15},
-  spark:{name:"電擊", type:"電", pow:40, acc:100, pp:35},
-  thunder:{name:"雷光", type:"電", pow:80, acc:85, pp:15},
-  storm:{name:"天雷", type:"電", pow:95, acc:80, pp:8},
-  rock:{name:"落石", type:"岩", pow:50, acc:90, pp:25},
-  quake:{name:"岩崩", type:"岩", pow:75, acc:85, pp:15},
-  metal:{name:"鐵爪", type:"鋼", pow:50, acc:95, pp:25},
-  gear:{name:"齒輪擊", type:"鋼", pow:75, acc:90, pp:20},
-  drill:{name:"鑽擊", type:"鋼", pow:80, acc:90, pp:15},
-  cannon:{name:"砲擊", type:"鋼", pow:90, acc:85, pp:10},
-  bite:{name:"暗咬", type:"暗", pow:60, acc:100, pp:25},
-  shadow:{name:"影襲", type:"暗", pow:75, acc:95, pp:20},
-  moon:{name:"月蝕", type:"暗", pow:90, acc:90, pp:10},
-  frost:{name:"冰針", type:"冰", pow:40, acc:100, pp:35},
-  blizzard:{name:"暴雪", type:"冰", pow:90, acc:85, pp:10},
-  spirit:{name:"靈擊", type:"靈", pow:50, acc:100, pp:25},
-  hex:{name:"咒縛", type:"靈", pow:75, acc:95, pp:20},
-  starburst:{name:"星核", type:"靈", pow:95, acc:90, pp:8},
-  sting:{name:"蟲刺", type:"蟲", pow:40, acc:100, pp:35},
-  silk:{name:"絲縛", type:"蟲", pow:55, acc:95, pp:25},
-  swarm:{name:"蟲潮", type:"蟲", pow:80, acc:90, pp:15},
-  draco:{name:"龍息", type:"龍", pow:60, acc:100, pp:20},
-  wyrm:{name:"龍擊", type:"龍", pow:90, acc:90, pp:10},
-  solflare:{name:"日冕", type:"火", pow:100, acc:90, pp:8},
-  abyssmaw:{name:"淵噬", type:"水", pow:100, acc:90, pp:8},
-  corecannon:{name:"核芯砲", type:"鋼", pow:100, acc:90, pp:8},
-  struggle:{name:"掙扎", type:"普", pow:40, acc:100, pp:1}
+  tackle:{name:"撞擊", type:"普", pow:40, acc:100, pp:35, desc:"用身體衝撞對手"},
+  slam:{name:"摔打", type:"普", pow:80, acc:75, pp:20, desc:"用力甩打對手"},
+  quick:{name:"電光", type:"普", pow:40, acc:100, pp:30, pri:1, desc:"先制的快速一擊"},
+  wing:{name:"翼斬", type:"普", pow:60, acc:100, pp:25, desc:"用翼刃切開對手"},
+  ember:{name:"火花", type:"火", pow:40, acc:100, pp:35, desc:"火星灼燒，有時造成灼傷", sec:{status:"brn", chance:0.1}},
+  roar:{name:"炎吼", type:"火", pow:70, acc:95, pp:20, desc:"灼熱咆哮，有時造成灼傷", sec:{status:"brn", chance:0.1}},
+  flare:{name:"烈焰", type:"火", pow:80, acc:90, pp:15, desc:"噴出烈火，有時造成灼傷", sec:{status:"brn", chance:0.1}},
+  inferno:{name:"焚天", type:"火", pow:95, acc:85, pp:8, desc:"焚燒天空，容易造成灼傷", sec:{status:"brn", chance:0.2}},
+  watergun:{name:"水槍", type:"水", pow:40, acc:100, pp:35, desc:"射出水流"},
+  surge:{name:"浪潮", type:"水", pow:80, acc:90, pp:15, desc:"掀起浪潮衝擊"},
+  aquatail:{name:"水流尾", type:"水", pow:90, acc:90, pp:10, desc:"如水般的尾巴橫掃"},
+  leaf:{name:"葉片", type:"草", pow:40, acc:100, pp:35, desc:"飛葉切割"},
+  vine:{name:"藤鞭", type:"草", pow:55, acc:100, pp:25, desc:"藤蔓抽打"},
+  petal:{name:"花舞", type:"草", pow:80, acc:90, pp:15, desc:"花瓣旋舞攻擊"},
+  absorb:{name:"吸取", type:"草", pow:20, acc:100, pp:25, desc:"吸收傷害的一半", drain:0.5},
+  gigadrain:{name:"終極吸取", type:"草", pow:75, acc:100, pp:10, desc:"吸收傷害的一半", drain:0.5},
+  energy:{name:"能量球", type:"草", pow:90, acc:100, pp:10, desc:"壓縮自然能量，有時降低防禦", sec:{stat:{def:-1}, chance:0.1}},
+  spark:{name:"電擊", type:"電", pow:40, acc:100, pp:35, desc:"電流一擊，有時麻痺", sec:{status:"par", chance:0.1}},
+  thunder:{name:"雷光", type:"電", pow:80, acc:85, pp:15, desc:"落雷攻擊，有時麻痺", sec:{status:"par", chance:0.1}},
+  storm:{name:"天雷", type:"電", pow:95, acc:80, pp:8, desc:"召喚天雷，容易麻痺", sec:{status:"par", chance:0.2}},
+  rock:{name:"落石", type:"岩", pow:50, acc:90, pp:25, desc:"投擲石塊"},
+  quake:{name:"岩崩", type:"岩", pow:75, acc:85, pp:15, desc:"落石崩塌，有時讓對手畏縮", sec:{flinch:true, chance:0.3}},
+  metal:{name:"鐵爪", type:"鋼", pow:50, acc:95, pp:25, desc:"鋼鐵利爪"},
+  gear:{name:"齒輪擊", type:"鋼", pow:75, acc:90, pp:20, desc:"齒輪輾壓"},
+  drill:{name:"鑽擊", type:"鋼", pow:80, acc:90, pp:15, desc:"旋轉鑽刺"},
+  cannon:{name:"砲擊", type:"鋼", pow:90, acc:85, pp:10, desc:"重型火砲"},
+  flashcannon:{name:"閃光砲", type:"鋼", pow:80, acc:100, pp:10, desc:"光之砲擊，有時降低防禦", sec:{stat:{def:-1}, chance:0.1}},
+  bite:{name:"暗咬", type:"暗", pow:60, acc:100, pp:25, desc:"暗影撕咬，有時讓對手畏縮", sec:{flinch:true, chance:0.3}},
+  shadow:{name:"影襲", type:"暗", pow:75, acc:95, pp:20, desc:"從陰影突襲"},
+  moon:{name:"月蝕", type:"暗", pow:90, acc:90, pp:10, desc:"月影吞噬"},
+  darkpulse:{name:"惡之波動", type:"暗", pow:80, acc:100, pp:15, desc:"釋放惡念，有時讓對手畏縮", sec:{flinch:true, chance:0.2}},
+  frost:{name:"冰針", type:"冰", pow:40, acc:100, pp:35, desc:"冰針穿刺，有時冰凍", sec:{status:"frz", chance:0.1}},
+  icebeam:{name:"冷凍光線", type:"冰", pow:90, acc:100, pp:10, desc:"極寒光束，有時冰凍", sec:{status:"frz", chance:0.1}},
+  blizzard:{name:"暴雪", type:"冰", pow:90, acc:85, pp:10, desc:"暴風雪，容易冰凍", sec:{status:"frz", chance:0.1}},
+  spirit:{name:"靈擊", type:"靈", pow:50, acc:100, pp:25, desc:"靈體衝撞"},
+  hex:{name:"咒縛", type:"靈", pow:75, acc:95, pp:20, desc:"詛咒束縛，有時混亂", sec:{cnf:true, chance:0.1}},
+  shadowball:{name:"暗影球", type:"靈", pow:80, acc:100, pp:15, desc:"影之球，有時降低防禦", sec:{stat:{def:-1}, chance:0.2}},
+  starburst:{name:"星核", type:"靈", pow:95, acc:90, pp:8, desc:"星核爆發"},
+  sting:{name:"蟲刺", type:"蟲", pow:40, acc:100, pp:35, desc:"毒刺突刺，有時中毒", sec:{status:"psn", chance:0.1}},
+  silk:{name:"絲縛", type:"蟲", pow:55, acc:95, pp:25, desc:"絲線纏繞，有時降低速度", sec:{stat:{spd:-1}, chance:0.3}},
+  swarm:{name:"蟲潮", type:"蟲", pow:80, acc:90, pp:15, desc:"蟲群吞沒"},
+  bugbuzz:{name:"蟲鳴", type:"蟲", pow:90, acc:100, pp:10, desc:"共振音波，有時降低防禦", sec:{stat:{def:-1}, chance:0.1}},
+  draco:{name:"龍息", type:"龍", pow:60, acc:100, pp:20, desc:"龍息噴射，有時麻痺", sec:{status:"par", chance:0.1}},
+  dragonpulse:{name:"龍之波動", type:"龍", pow:85, acc:100, pp:10, desc:"龍威衝擊波"},
+  wyrm:{name:"龍擊", type:"龍", pow:90, acc:90, pp:10, desc:"龍威一擊"},
+  solflare:{name:"日冕", type:"火", pow:100, acc:90, pp:8, desc:"日獅專屬。日冕焚燒", sec:{status:"brn", chance:0.2}},
+  abyssmaw:{name:"淵噬", type:"水", pow:100, acc:90, pp:8, desc:"淵皇專屬。深淵咬碎"},
+  corecannon:{name:"核芯砲", type:"鋼", pow:100, acc:90, pp:8, desc:"核鎧專屬。核芯轟擊"},
+  growl:{name:"吼叫", type:"普", pow:0, acc:100, pp:40, desc:"降低對手攻擊", eff:{stat:{atk:-1}}},
+  leer:{name:"瞪眼", type:"普", pow:0, acc:100, pp:30, desc:"降低對手防禦", eff:{stat:{def:-1}}},
+  howl:{name:"長嚎", type:"普", pow:0, acc:null, pp:20, desc:"提高自己的攻擊", eff:{self:true, stat:{atk:1}}},
+  swords:{name:"劍舞", type:"普", pow:0, acc:null, pp:20, desc:"大幅提高自己的攻擊", eff:{self:true, stat:{atk:2}}},
+  harden:{name:"變硬", type:"普", pow:0, acc:null, pp:30, desc:"提高自己的防禦", eff:{self:true, stat:{def:1}}},
+  withdraw:{name:"縮殼", type:"水", pow:0, acc:null, pp:40, desc:"縮進殼裡提高防禦", eff:{self:true, stat:{def:1}}},
+  irondef:{name:"鐵壁", type:"鋼", pow:0, acc:null, pp:15, desc:"大幅提高自己的防禦", eff:{self:true, stat:{def:2}}},
+  agility:{name:"高速移動", type:"普", pow:0, acc:null, pp:20, desc:"大幅提高自己的速度", eff:{self:true, stat:{spd:2}}},
+  screech:{name:"刺耳聲", type:"普", pow:0, acc:85, pp:40, desc:"大幅降低對手防禦", eff:{stat:{def:-2}}},
+  charm:{name:"撒嬌", type:"普", pow:0, acc:100, pp:20, desc:"大幅降低對手攻擊", eff:{stat:{atk:-2}}},
+  stringshot:{name:"吐絲", type:"蟲", pow:0, acc:95, pp:40, desc:"降低對手速度", eff:{stat:{spd:-1}}},
+  sandatk:{name:"揚沙", type:"岩", pow:0, acc:100, pp:15, desc:"降低對手命中率", eff:{stat:{acc:-1}}},
+  smokescreen:{name:"煙幕", type:"普", pow:0, acc:100, pp:20, desc:"降低對手命中率", eff:{stat:{acc:-1}}},
+  protect:{name:"守住", type:"普", pow:0, acc:null, pp:10, pri:4, desc:"擋住這回合的攻擊", eff:{self:true, protect:true}},
+  recover:{name:"再生", type:"普", pow:0, acc:null, pp:10, desc:"回復一半體力", eff:{self:true, heal:0.5}},
+  synthesize:{name:"光合作用", type:"草", pow:0, acc:null, pp:5, desc:"回復一半體力", eff:{self:true, heal:0.5}},
+  moonlight:{name:"月光", type:"靈", pow:0, acc:null, pp:5, desc:"回復一半體力", eff:{self:true, heal:0.5}},
+  morningsun:{name:"晨光", type:"火", pow:0, acc:null, pp:5, desc:"回復一半體力", eff:{self:true, heal:0.5}},
+  rest:{name:"睡眠", type:"普", pow:0, acc:null, pp:10, desc:"睡著兩回合並完全回復", eff:{self:true, rest:true}},
+  willow:{name:"鬼火", type:"火", pow:0, acc:85, pp:15, desc:"讓對手灼傷", eff:{status:"brn"}},
+  twave:{name:"電磁波", type:"電", pow:0, acc:90, pp:20, desc:"讓對手麻痺", eff:{status:"par"}},
+  toxic:{name:"淤毒", type:"暗", pow:0, acc:90, pp:10, desc:"讓對手中毒", eff:{status:"psn"}},
+  powder:{name:"催眠粉", type:"草", pow:0, acc:75, pp:15, desc:"讓對手入睡", powder:true, eff:{status:"slp"}},
+  hypno:{name:"催眠術", type:"靈", pow:0, acc:60, pp:20, desc:"讓對手入睡", eff:{status:"slp"}},
+  spore:{name:"孢子", type:"草", pow:0, acc:100, pp:15, desc:"讓對手入睡", powder:true, eff:{status:"slp"}},
+  stunspore:{name:"麻痺粉", type:"草", pow:0, acc:75, pp:30, desc:"讓對手麻痺", powder:true, eff:{status:"par"}},
+  confuse:{name:"奇異光", type:"靈", pow:0, acc:100, pp:10, desc:"讓對手混亂", eff:{cnf:true}},
+  struggle:{name:"掙扎", type:"普", pow:40, acc:100, pp:1, desc:"用盡次數後的反傷攻擊"}
 };
 
 const SPECIES = {
@@ -1379,6 +1427,39 @@ const SPECIES = {
     learn:[[1,"shadow"],[10,"draco"],[18,"moon"],[26,"wyrm"],[34,"starburst"]] }
 };
 
+(function enrichLearnsets(){
+  const extra = {
+    普:[[7,"growl"],[13,"howl"],[21,"protect"],[27,"swords"]],
+    火:[[11,"willow"],[19,"morningsun"],[29,"flare"]],
+    水:[[11,"withdraw"],[19,"recover"],[29,"aquatail"]],
+    草:[[11,"powder"],[19,"synthesize"],[25,"gigadrain"],[31,"energy"]],
+    電:[[11,"twave"],[23,"agility"]],
+    岩:[[11,"sandatk"],[19,"harden"]],
+    鋼:[[11,"harden"],[23,"irondef"],[31,"flashcannon"]],
+    暗:[[11,"leer"],[19,"toxic"],[29,"darkpulse"]],
+    冰:[[11,"smokescreen"],[23,"rest"],[29,"icebeam"]],
+    靈:[[11,"confuse"],[19,"hypno"],[25,"moonlight"],[31,"shadowball"]],
+    蟲:[[7,"stringshot"],[19,"stunspore"],[29,"bugbuzz"]],
+    龍:[[13,"leer"],[21,"agility"],[31,"dragonpulse"]]
+  };
+  Object.keys(SPECIES).forEach(id=>{
+    const sp = SPECIES[id];
+    const seen = new Set(sp.learn.map(x=>x[1]));
+    const usedLv = new Set(sp.learn.map(x=>x[0]));
+    const add = [[7,"growl"],[21,"protect"]];
+    (sp.types||[]).forEach(t => (extra[t]||[]).forEach(p => add.push(p)));
+    add.forEach(([lv,mid])=>{
+      if(seen.has(mid) || !MOVES[mid]) return;
+      while(usedLv.has(lv)) lv++;
+      if(lv>40) return;
+      sp.learn.push([lv, mid]);
+      seen.add(mid);
+      usedLv.add(lv);
+    });
+    sp.learn.sort((a,b)=> a[0]-b[0]);
+  });
+})();
+
 const STARTERS = [
   { sid:"emberkit", blurb:"火系精靈。三階日獅可學專屬日冕。" },
   { sid:"droplet", blurb:"水系精靈。三階淵皇可學專屬淵噬。" },
@@ -1391,11 +1472,54 @@ function maxHp(mon){
 }
 function statOf(mon, key){
   const b = SPECIES[mon.sid].base[key];
-  return Math.floor(b*2*mon.lv/100)+5;
+  let v = Math.floor(b*2*mon.lv/100)+5;
+  if(battle && battle.vol){
+    const side = mon===battle.foe ? "f" : (S && S.party[battle.pi]===mon ? "p" : null);
+    if(side){
+      const st = (battle.vol[side].stages||{})[key]||0;
+      v = Math.max(1, Math.floor(v * stageMul(st)));
+    }
+  }
+  if(key==="atk" && mon.status==="brn") v = Math.max(1, Math.floor(v*0.5));
+  if(key==="spd" && mon.status==="par") v = Math.max(1, Math.floor(v*0.5));
+  return v;
+}
+function stageMul(n){
+  n = clamp(n|0, -6, 6);
+  return n>=0 ? (2+n)/2 : 2/(2-n);
+}
+function accStageMul(n){
+  n = clamp(n|0, -6, 6);
+  return n>=0 ? (3+n)/3 : 3/(3-n);
 }
 function expToNext(lv){ return lv*lv*lv; }
+function backfillMoves(mon){
+  if(!mon || !SPECIES[mon.sid]) return;
+  if(!mon.moves) mon.moves = [];
+  const have = new Set(mon.moves);
+  SPECIES[mon.sid].learn.filter(x=>x[0]<=mon.lv).forEach(x=>{
+    const id = x[1];
+    if(have.has(id) || mon.moves.length>=4 || !MOVES[id] || MOVES[id].pow>0) return;
+    mon.moves.push(id);
+    have.add(id);
+  });
+  ensurePp(mon);
+}
 function movesFor(sid, lv){
-  return SPECIES[sid].learn.filter(x=>x[0]<=lv).map(x=>x[1]).slice(-4);
+  const atk=[], sta=[];
+  SPECIES[sid].learn.filter(x=>x[0]<=lv).forEach(x=>{
+    const id = x[1], mv = MOVES[id];
+    if(!mv) return;
+    const dest = mv.pow>0 ? atk : sta;
+    const i = dest.indexOf(id);
+    if(i>=0) dest.splice(i,1);
+    dest.push(id);
+  });
+  const out = [];
+  if(sta.length) out.push(sta[sta.length-1]);
+  for(let i=atk.length-1;i>=0 && out.length<4;i--) out.unshift(atk[i]);
+  for(let i=sta.length-2;i>=0 && out.length<4;i--) out.unshift(sta[i]);
+  return out.slice(-4);
 }
 function maxPp(id){ return (MOVES[id] && MOVES[id].pp) || 20; }
 function ensurePp(mon){
@@ -1521,6 +1645,51 @@ function isRareSpawn(sid, weight){
 function rareBadge(){ return `<span class="tag-rare">稀有</span>`; }
 function isFaint(m){ return m.hp<=0; }
 function living(list){ return list.filter(m=>!isFaint(m)); }
+const STATUS_NAME = { brn:"灼傷", psn:"中毒", par:"麻痺", slp:"睡眠", frz:"冰凍" };
+const STATUS_SHORT = { brn:"灼", psn:"毒", par:"麻", slp:"眠", frz:"凍" };
+const STAT_LABEL = { atk:"攻擊", def:"防禦", spd:"速度", acc:"命中率", eva:"回避率" };
+function clearStatus(m){ if(m){ m.status=null; m.statusT=0; } }
+function immuneStatus(mon, kind){
+  const types = SPECIES[mon.sid].types;
+  if(kind==="brn" && types.includes("火")) return true;
+  if(kind==="par" && types.includes("電")) return true;
+  if(kind==="frz" && types.includes("冰")) return true;
+  if(kind==="psn" && types.includes("鋼")) return true;
+  return false;
+}
+function canStatus(mon, kind){ return !!(mon && !mon.status && !immuneStatus(mon, kind)); }
+function applyStatus(mon, kind){
+  if(!canStatus(mon, kind)) return false;
+  mon.status = kind;
+  mon.statusT = kind==="slp" ? (1+Math.floor(Math.random()*3)) : 0;
+  return true;
+}
+function statusTag(m){
+  if(!m || !m.status) return "";
+  return `<span class="tag-status ${m.status}">${STATUS_SHORT[m.status]||m.status}</span>`;
+}
+function emptyVol(){
+  return { stages:{atk:0,def:0,spd:0,acc:0,eva:0}, cnf:0, protect:false, protectStreak:0, flinch:false };
+}
+function volOf(side){ return battle && battle.vol ? battle.vol[side] : emptyVol(); }
+function changeStat(side, key, n){
+  const st = volOf(side).stages;
+  const old = st[key]||0;
+  st[key] = clamp(old+n, -6, 6);
+  const lab = STAT_LABEL[key]||key;
+  if(st[key]===old) return lab+(n>0?"已經無法再提高！":"已經無法再降低！");
+  const mag = Math.abs(n)>=2 ? (n>0?"大幅提高":"大幅降低") : (n>0?"提高":"降低");
+  return lab+mag+"了！";
+}
+function startRound(){
+  if(!battle.vol) battle.vol = { p:emptyVol(), f:emptyVol() };
+  ["p","f"].forEach(s=>{
+    const v = battle.vol[s];
+    v.flinch = false;
+    if(!v.protect) v.protectStreak = 0;
+    v.protect = false;
+  });
+}
 
 const ITEMS = {
   potion:{
@@ -2126,8 +2295,8 @@ function normalizeSave(data){
   data.visited = data.visited||{};
   if(!data.lastHeal) data.lastHeal = { map:"town", x:3, y:3 };
   if(!data.lastHunt) data.lastHunt = null;
-  (data.party||[]).forEach(ensurePp);
-  (data.box||[]).forEach(ensurePp);
+  (data.party||[]).forEach(m=>{ ensurePp(m); backfillMoves(m); });
+  (data.box||[]).forEach(m=>{ ensurePp(m); backfillMoves(m); });
   return data;
 }
 function loadSave(){
@@ -2180,6 +2349,7 @@ function healAll(){
   all.forEach(m=>{
     m.hp = maxHp(m);
     restorePp(m);
+    clearStatus(m);
   });
 }
 function addMon(mon){
@@ -2592,7 +2762,7 @@ function interact(){
     healAll();
     S.lastHeal = { map:S.map, x:S.x, y:S.y };
     persist();
-    openDialog("治療臺",["傷勢與招式次數已完全恢復。"]);
+    openDialog("治療臺",["傷勢、異常狀態與招式次數已完全恢復。"]);
     return;
   }
   if(t==="S"){ openShop(); return; }
@@ -2727,7 +2897,7 @@ function monRow(m){
   const faint = isFaint(m) ? `<span class="tag-faint">瀕死</span>` : "";
   return `<div class="l monrow">${port(m.sid,true)}
     <div class="monmeta">
-      <div>${sp.name} <span class="muted">Lv.${m.lv}</span>${faint}</div>
+      <div>${sp.name} <span class="muted">Lv.${m.lv}</span>${faint}${statusTag(m)}</div>
       <div>${types}</div>
       ${hpBarHtml(m)}
       <span class="muted">${evoHint(m)}</span>
@@ -2823,7 +2993,7 @@ function openSummary(i){
   openSheet(`<h2>${sp.name}</h2>
     <div class="sheet-body" style="text-align:center">
       <img class="port" style="width:96px;height:96px;margin:4px auto" src="${sprURL(m.sid)}">
-      <p>${sp.types.map(typeBadge).join("")} ${sp.cat}</p>
+      <p>${sp.types.map(typeBadge).join("")} ${sp.cat}${statusTag(m)}</p>
       <p>Lv.${m.lv}　攻 ${statOf(m,"atk")}　防 ${statOf(m,"def")}　速 ${statOf(m,"spd")}</p>
       <div style="margin:8px auto;max-width:220px">${hpBarHtml(m)}</div>
       <p class="muted">經驗 ${m.lv>=50?"已滿":m.exp+" / "+expToNext(m.lv)}</p>
@@ -3023,7 +3193,16 @@ function autoBattleAct(){
   const you = S.party[battle.pi];
   ensurePp(you);
   const usable = you.moves.filter(id=>ppLeft(you,id)>0);
-  const id = usable.length ? usable.sort((a,b)=>(MOVES[b].pow||0)-(MOVES[a].pow||0))[0] : "struggle";
+  if(!usable.length){ playerAct({type:"move", id:"struggle"}); return; }
+  const hp = you.hp/maxHp(you);
+  const heal = usable.find(id=>{
+    const e = MOVES[id]&&MOVES[id].eff;
+    return e && (e.heal || e.rest) && hp<0.4;
+  });
+  if(heal){ playerAct({type:"move", id:heal}); return; }
+  const attacks = usable.filter(id=>MOVES[id]&&MOVES[id].pow>0);
+  const pool = attacks.length ? attacks : usable.filter(id=>!(MOVES[id].eff&&MOVES[id].eff.protect));
+  const id = (pool.length?pool:usable).sort((a,b)=>(MOVES[b].pow||0)-(MOVES[a].pow||0))[0];
   playerAct({type:"move", id});
 }
 
@@ -3173,7 +3352,7 @@ function openHelp(){
     GitHub 網址請開資料夾網址，或直接開 <b>Replica Pokemon.html</b>。<br><br>
     <b>存檔</b>：進度存在這個瀏覽器裡。無痕、清快取、換瀏覽器、LINE／微信內建瀏覽器可能丟失。<br><br>
     操作：方向鍵移動，確認交談／治療／商店，草叢會遇敵。<br>
-    招式最多四招。長按可換位置；第五招會詢問要換哪一招。<br>
+    招式最多四招，含攻擊與變化（能力升降、灼傷／中毒／麻痺／睡眠／冰凍、回復、守住）。長按可換位置；第五招會詢問要換哪一招。<br>
     <b>游泳</b>：取得潮浪徽章，隊伍有水系，在水邊按確認下水。<br>
     <b>飛天</b>：取得雷翼徽章，隊伍有龍系或會翼斬，地區圖點已去過的城鎮。<br>
     隊伍最多帶 6 隻，多的進核倉，可叫回或滿員交換。選單可開自動尋怪：先選走過的草地，低血立刻治療再回掛機點；第二模式遇稀有自動捕捉。<br><br>
@@ -3210,8 +3389,8 @@ function paintHud(){
   const foe = battle.foe;
   if(!you || !foe) return;
   const ys = SPECIES[you.sid], fs = SPECIES[foe.sid];
-  $("pName").textContent = ys.name+"　　Lv"+you.lv;
-  $("fName").innerHTML = fs.name+(battle.kind==="wild"&&battle.rare?rareBadge():"")+"　　Lv"+foe.lv;
+  $("pName").innerHTML = ys.name+"　　Lv"+you.lv+statusTag(you);
+  $("fName").innerHTML = fs.name+(battle.kind==="wild"&&battle.rare?rareBadge():"")+statusTag(foe)+"　　Lv"+foe.lv;
   $("pMeta").innerHTML = ys.types.map(typeBadge).join("")+" HP "+Math.max(0,you.hp)+"/"+maxHp(you);
   $("fMeta").innerHTML = (battle.kind==="wild"?"野生　":battle.trainerName+"　")+fs.types.map(typeBadge).join("");
   $("fBox").classList.toggle("is-rare", !!(battle.kind==="wild" && battle.rare));
@@ -3236,7 +3415,7 @@ function burst(x,y,cols,n,spd){
       c:pick(cols), life:1, max:400+Math.random()*300, shape:"dot" });
   }
 }
-function specOf(id){ return clamp((MOVES[id].pow||40)/40, 0.7, 2.6); }
+function specOf(id){ return clamp((MOVES[id].pow||20)/40, 0.55, 2.6); }
 function colsOf(type){
   return {
     火:["#ff6b35","#ffd36a","#ff3d00"],
@@ -3664,7 +3843,7 @@ function startTrainer(npc){
 async function beginBattle(b){
   busy = true;
   resetBat();
-  battle = Object.assign({ pi: firstAlive(), lock:false }, b);
+  battle = Object.assign({ pi: firstAlive(), lock:false, vol:{ p:emptyVol(), f:emptyVol() } }, b);
   showView("battle");
   fitBattle();
   paintHud();
@@ -3756,6 +3935,7 @@ function switchMenu(must){
     bat.p.enter = 0; bat.p.sink = 0; bat.p.a = 1;
     paintHud();
     tween(280, p => { bat.p.enter = p; });
+    if(battle.vol) battle.vol.p = emptyVol();
     if(must){ blog(`去吧，${monName(S.party[idx])}！`); wait(450).then(battleCmd); }
     else playerAct({type:"switch", idx, old});
   });
@@ -3800,6 +3980,7 @@ async function playerAct(act){
   if(battle.lock) return;
   battle.lock = true;
   $("bcmd").innerHTML = "";
+  startRound();
   const foeAct = aiAct();
   const you = S.party[battle.pi];
   const order = [];
@@ -3821,16 +4002,43 @@ async function playerAct(act){
     await doAct(step.side, step.act);
     if(await checkFaints()) return;
   }
+  if(battle) await tickStatus();
+  if(await checkFaints()) return;
   if(battle) battleCmd();
 }
 
 async function afterPlayerItem(){
   battle.lock = true; $("bcmd").innerHTML = "";
+  startRound();
   await doAct("f", aiAct());
+  if(await checkFaints()) return;
+  if(battle) await tickStatus();
   if(await checkFaints()) return;
   if(battle) battleCmd();
 }
 
+function scoreMove(id, atk, def, atkSide){
+  const mv = MOVES[id];
+  if(!mv) return 0;
+  const e = mv.eff||{};
+  const defSide = atkSide==="p" ? "f" : "p";
+  if(mv.pow>0){
+    return mv.pow * typeMul(mv.type, SPECIES[def.sid].types) * ((mv.acc||100)/100);
+  }
+  let s = 8;
+  if(e.status && canStatus(def, e.status)) s = 58;
+  if(e.cnf && volOf(defSide).cnf<=0) s = 42;
+  if(e.stat && e.self){
+    const key = Object.keys(e.stat)[0];
+    s = (volOf(atkSide).stages[key]||0)<2 ? 48 : 6;
+  }else if(e.stat){
+    s = 36;
+  }
+  if(e.heal && atk.hp/maxHp(atk)<0.55) s = 86;
+  if(e.rest && atk.hp/maxHp(atk)<0.4) s = 78;
+  if(e.protect) s = atk.hp/maxHp(atk)<0.35 ? 40 : 12;
+  return s;
+}
 function aiAct(){
   const foe = battle.foe;
   const you = S.party[battle.pi];
@@ -3839,16 +4047,127 @@ function aiAct(){
   if(!usable.length) return {type:"move", id:"struggle"};
   let best = usable[0], score = -1;
   usable.forEach(id=>{
-    const mv = MOVES[id];
-    const s = (mv.pow||0) * typeMul(mv.type, SPECIES[you.sid].types);
+    const s = scoreMove(id, foe, you, "f");
     if(s>score){ score=s; best=id; }
   });
-  if(Math.random()<0.25) best = pick(usable);
+  if(Math.random()<0.2) best = pick(usable);
   return {type:"move", id:best};
 }
 
+async function playStatusFx(side, self){
+  const pos = battlePos();
+  const spr = self ? (side==="p"?bat.p:bat.f) : (side==="p"?bat.f:bat.p);
+  const pt = self ? (side==="p"?pos.p:pos.f) : (side==="p"?pos.f:pos.p);
+  burst(pt.x, pt.y-16, self?["#fff","#f0c14b","#ffe082"]:["#ce93d8","#90caf9","#fff"], 12, 2);
+  await tween(220, p => { spr.flash = p<0.6 ? 1 : 0; });
+  spr.flash = 0;
+}
+async function tickStatus(){
+  if(!battle) return;
+  for(const side of ["p","f"]){
+    const mon = side==="p" ? S.party[battle.pi] : battle.foe;
+    if(!mon || isFaint(mon)) continue;
+    if(mon.status==="psn"){
+      const d = Math.max(1, Math.floor(maxHp(mon)/8));
+      mon.hp = Math.max(0, mon.hp-d);
+      paintHud();
+      blog(monName(mon)+" 受到毒害！");
+      await wait(300);
+    }else if(mon.status==="brn"){
+      const d = Math.max(1, Math.floor(maxHp(mon)/16));
+      mon.hp = Math.max(0, mon.hp-d);
+      paintHud();
+      blog(monName(mon)+" 被灼傷了！");
+      await wait(300);
+    }
+  }
+}
+async function applyVolEffects(side, atk, def, mv){
+  const e = mv.eff||{};
+  const self = !!e.self;
+  const tgt = self ? atk : def;
+  const tgtSide = self ? side : (side==="p"?"f":"p");
+  if(e.protect){
+    const v = volOf(side);
+    if(v.protectStreak>0 && Math.random()>1/3){
+      v.protectStreak = 0;
+      blog("沒有成功！");
+      return;
+    }
+    v.protect = true;
+    v.protectStreak++;
+    blog(monName(atk)+" 守住了自己！");
+    return;
+  }
+  if(e.rest){
+    atk.hp = maxHp(atk);
+    atk.status = "slp";
+    atk.statusT = 2;
+    volOf(side).cnf = 0;
+    paintHud();
+    blog(monName(atk)+" 睡著了，體力完全回復！");
+    return;
+  }
+  if(e.heal){
+    const room = maxHp(atk)-atk.hp;
+    if(room<=0){ blog("體力已經滿了！"); return; }
+    const heal = Math.max(1, Math.floor(maxHp(atk)*e.heal));
+    atk.hp = Math.min(maxHp(atk), atk.hp+heal);
+    paintHud();
+    blog(monName(atk)+" 回復了 "+heal+" 點體力！");
+    return;
+  }
+  if(e.status){
+    if(mv.powder && SPECIES[tgt.sid].types.includes("草")){ blog("對這個屬性沒有效果！"); return; }
+    if(tgt.status){ blog(monName(tgt)+" 已經處於異常狀態！"); return; }
+    if(immuneStatus(tgt, e.status)){ blog("對這個屬性沒有效果！"); return; }
+    applyStatus(tgt, e.status);
+    paintHud();
+    blog(monName(tgt)+" "+STATUS_NAME[e.status]+"了！");
+    return;
+  }
+  if(e.cnf){
+    const v = volOf(tgtSide);
+    if(v.cnf>0){ blog(monName(tgt)+" 已經混亂了！"); return; }
+    v.cnf = 2+Math.floor(Math.random()*3);
+    blog(monName(tgt)+" 混亂了！");
+    return;
+  }
+  if(e.stat){
+    const who = self ? monName(atk) : monName(def);
+    const parts = Object.keys(e.stat).map(k=>changeStat(tgtSide, k, e.stat[k]));
+    blog(who+" 的 "+parts.join(" "));
+  }
+}
+async function applySecondary(side, atk, def, mv){
+  const sec = mv.sec;
+  if(!sec || Math.random()>=(sec.chance||1)) return;
+  const defSide = side==="p"?"f":"p";
+  if(sec.status){
+    if(applyStatus(def, sec.status)){
+      paintHud();
+      blog(monName(def)+" "+STATUS_NAME[sec.status]+"了！");
+      await wait(220);
+    }
+  }
+  if(sec.cnf){
+    const v = volOf(defSide);
+    if(v.cnf<=0){
+      v.cnf = 2+Math.floor(Math.random()*3);
+      blog(monName(def)+" 混亂了！");
+      await wait(220);
+    }
+  }
+  if(sec.stat){
+    const parts = Object.keys(sec.stat).map(k=>changeStat(defSide, k, sec.stat[k]));
+    blog(monName(def)+" 的 "+parts.join(" "));
+    await wait(220);
+  }
+  if(sec.flinch) volOf(defSide).flinch = true;
+}
 async function doAct(side, act){
   if(act.type==="switch"){
+    if(battle.vol) battle.vol.p = emptyVol();
     blog(`${act.old}，回來！去吧，${monName(S.party[battle.pi])}！`);
     paintHud();
     await tween(280, p => { bat.p.enter = p; });
@@ -3856,7 +4175,58 @@ async function doAct(side, act){
   }
   const atk = side==="p" ? S.party[battle.pi] : battle.foe;
   const def = side==="p" ? battle.foe : S.party[battle.pi];
+  const atkVol = volOf(side);
+  const defVol = volOf(side==="p"?"f":"p");
   const mv = MOVES[act.id] || MOVES.struggle;
+  if(atk.status==="slp"){
+    atk.statusT = (atk.statusT||1)-1;
+    if(atk.statusT<=0){
+      clearStatus(atk);
+      paintHud();
+      blog(monName(atk)+" 醒過來了！");
+      await wait(240);
+    }else{
+      blog(monName(atk)+" 正在睡覺。");
+      await wait(280);
+      return;
+    }
+  }
+  if(atk.status==="frz"){
+    if(Math.random()<0.2){
+      clearStatus(atk);
+      paintHud();
+      blog(monName(atk)+" 的冰凍解除了！");
+      await wait(240);
+    }else{
+      blog(monName(atk)+" 凍住了，動不了！");
+      await wait(280);
+      return;
+    }
+  }
+  if(atk.status==="par" && Math.random()<0.25){
+    blog(monName(atk)+" 身體發麻，動不了！");
+    await wait(280);
+    return;
+  }
+  if(atkVol.cnf>0){
+    atkVol.cnf--;
+    if(atkVol.cnf<=0){
+      blog(monName(atk)+" 的混亂解除了！");
+      await wait(220);
+    }else if(Math.random()<1/3){
+      const dmg = Math.max(1, Math.floor(((2*atk.lv/5+2)*40*statOf(atk,"atk")/statOf(atk,"def"))/50+2));
+      atk.hp = Math.max(0, atk.hp-dmg);
+      paintHud();
+      blog(monName(atk)+" 混亂中撞到自己，受到 "+dmg+" 傷害！");
+      await wait(320);
+      return;
+    }
+  }
+  if(atkVol.flinch){
+    blog(monName(atk)+" 畏縮了，無法出招！");
+    await wait(280);
+    return;
+  }
   if(act.id!=="struggle" && ppLeft(atk, act.id)<=0){
     blog(`${monName(atk)} 的 ${mv.name} 次數用盡了！`);
     await wait(220);
@@ -3866,12 +4236,27 @@ async function doAct(side, act){
   persist();
   blog(`${monName(atk)} 使出 ${mv.name}！`);
   await wait(180);
-  if(Math.random()*100 > (mv.acc||100)){
-    blog("沒有打中！");
-    const miss = side==="p" ? bat.f : bat.p;
-    await tween(200, p => { miss.x = Math.sin(p*Math.PI)*18*(side==="p"?1:-1); });
-    miss.x = 0;
-    await wait(200);
+  const acc = mv.acc;
+  if(acc!=null){
+    const hit = acc * accStageMul(atkVol.stages.acc||0) / accStageMul(defVol.stages.eva||0);
+    if(Math.random()*100 > hit){
+      blog("沒有打中！");
+      const miss = side==="p" ? bat.f : bat.p;
+      await tween(200, p => { miss.x = Math.sin(p*Math.PI)*18*(side==="p"?1:-1); });
+      miss.x = 0;
+      await wait(200);
+      return;
+    }
+  }
+  if(!((mv.eff||{}).self) && defVol.protect){
+    blog(monName(def)+" 守住了攻擊！");
+    await wait(280);
+    return;
+  }
+  if(!mv.pow){
+    await playStatusFx(side, !!(mv.eff&&mv.eff.self));
+    await applyVolEffects(side, atk, def, mv);
+    await wait(320);
     return;
   }
   await playAttack(side, act.id);
@@ -3886,6 +4271,13 @@ async function doAct(side, act){
   if(eff>1.5) extra += " 效果絕佳！";
   else if(eff<1 && eff>0) extra += " 似乎不太有效…";
   blog(extra);
+  if(mv.drain){
+    const heal = Math.max(1, Math.floor(dmg*mv.drain));
+    atk.hp = Math.min(maxHp(atk), atk.hp+heal);
+    paintHud();
+    blog(monName(atk)+" 吸收了 "+heal+" 點體力！");
+    await wait(240);
+  }
   if(act.id==="struggle"){
     const recoil = Math.max(1, Math.floor(maxHp(atk)/4));
     atk.hp = Math.max(0, atk.hp-recoil);
@@ -3893,7 +4285,8 @@ async function doAct(side, act){
     blog(`${monName(atk)} 因反作用力受到 ${recoil} 傷害！`);
     await wait(280);
   }
-  await wait(380);
+  if(!isFaint(def)) await applySecondary(side, atk, def, mv);
+  await wait(300);
 }
 
 async function checkFaints(){
@@ -3906,6 +4299,7 @@ async function checkFaints(){
       battle.ti++;
       if(battle.ti < battle.team.length){
         battle.foe = battle.team[battle.ti];
+        if(battle.vol) battle.vol.f = emptyVol();
         bat.f = {x:0,y:0,flash:0,sink:0,a:1,enter:0};
         blog(`${battle.trainerName} 派出了 ${monName(battle.foe)}！`);
         paintHud();
@@ -4000,6 +4394,7 @@ async function resolveCatch(ballKey){
     const got = cloneMon(foe);
     got.hp = Math.max(1, got.hp);
     restorePp(got);
+    clearStatus(got);
     const where = addMon(got);
     blog(`捕捉成功！${monName(got)} ${where==="box"?"已送入核倉。":"加入隊伍！"}`);
     await wait(700);
