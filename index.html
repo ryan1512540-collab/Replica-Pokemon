@@ -3155,7 +3155,7 @@ function openAutoMenu(){
   }).join("");
   openSheet(`<h2>自動尋怪</h2>
     <div class="sheet-body">
-      <p class="muted" style="line-height:1.7;margin-bottom:10px">只在有草叢的地圖走動，不進館、不進城鎮。低血或全滅會立刻治療，再回到掛機點。掛機時新招不會彈窗，滿四招會進保留區。觸碰螢幕就會停止自動。</p>
+      <p class="muted" style="line-height:1.7;margin-bottom:10px">只在有草叢的地圖走動，不進館、不進城鎮。戰鬥會依屬性與能否擊倒自動選招，劣勢時會換隊友。低血或全滅會立刻治療，再回到掛機點。掛機時新招不會彈窗，滿四招會進保留區。觸碰螢幕就會停止自動。</p>
       <p class="muted" style="margin-bottom:8px">掛機點：<b>${MAPS[chosen]?MAPS[chosen].name:huntName(pick)}</b>${canHunt(S.map)?"（可改成你現在站的草地）":""}</p>
       ${rows || `<p class="muted">還沒走過草地。開始後會先去翠葉道。</p>`}
       <button class="listbtn" id="auFarm">1. 自動尋怪打怪${AUTO.on&&AUTO.mode==="farm"?"　（進行中）":""}</button>
@@ -3332,6 +3332,34 @@ function queueAutoBattle(){
     autoBattleAct();
   }, 260);
 }
+function expectedHit(atk, def, id){
+  const mv = MOVES[id];
+  if(!mv || !(mv.pow>0)) return 0;
+  const stab = SPECIES[atk.sid].types.includes(mv.type) ? 1.5 : 1;
+  const eff = typeMul(mv.type, SPECIES[def.sid].types);
+  const acc = (mv.acc==null ? 100 : mv.acc) / 100;
+  const atkStat = Math.max(1, statOf(atk,"atk"));
+  const defStat = Math.max(1, statOf(def,"def"));
+  const base = ((2*atk.lv/5+2)*mv.pow*atkStat/defStat)/50 + 2;
+  return Math.max(1, base*stab*eff) * acc;
+}
+function bestAttackScore(mon, foe){
+  ensurePp(mon);
+  const ids = (mon.moves||[]).filter(id=>ppLeft(mon,id)>0 && MOVES[id] && MOVES[id].pow>0);
+  if(!ids.length) return 0;
+  return Math.max.apply(null, ids.map(id=>expectedHit(mon, foe, id)));
+}
+function pickBestMove(atk, def, atkSide){
+  ensurePp(atk);
+  const usable = (atk.moves||[]).filter(id=>ppLeft(atk,id)>0);
+  if(!usable.length) return "struggle";
+  let best = usable[0], score = -999;
+  usable.forEach(id=>{
+    const s = scoreMove(id, atk, def, atkSide);
+    if(s>score){ score=s; best=id; }
+  });
+  return best;
+}
 function autoBattleAct(){
   if(!battle || battle.lock) return;
   if(AUTO.mode==="catch" && battle.kind==="wild" && battle.rare){
@@ -3339,19 +3367,20 @@ function autoBattleAct(){
     if(ball){ useItem(ball, "battle"); return; }
   }
   const you = S.party[battle.pi];
+  const foe = battle.foe;
   ensurePp(you);
-  const usable = you.moves.filter(id=>ppLeft(you,id)>0);
-  if(!usable.length){ playerAct({type:"move", id:"struggle"}); return; }
-  const hp = you.hp/maxHp(you);
-  const heal = usable.find(id=>{
-    const e = MOVES[id]&&MOVES[id].eff;
-    return e && (e.heal || e.rest) && hp<0.4;
+  const curDmg = bestAttackScore(you, foe);
+  let sw = -1, swScore = -1;
+  S.party.forEach((m,i)=>{
+    if(i===battle.pi || isFaint(m) || m.hp/maxHp(m)<0.35) return;
+    const s = bestAttackScore(m, foe) * (0.55 + 0.45*m.hp/maxHp(m));
+    if(s>swScore){ swScore=s; sw=i; }
   });
-  if(heal){ playerAct({type:"move", id:heal}); return; }
-  const attacks = usable.filter(id=>MOVES[id]&&MOVES[id].pow>0);
-  const pool = attacks.length ? attacks : usable.filter(id=>!(MOVES[id].eff&&MOVES[id].eff.protect));
-  const id = (pool.length?pool:usable).sort((a,b)=>(MOVES[b].pow||0)-(MOVES[a].pow||0))[0];
-  playerAct({type:"move", id});
+  if(sw>=0 && swScore>curDmg*1.55 && curDmg<foe.hp*0.6){
+    playerAct({type:"switch", idx:sw, old:monName(you)});
+    return;
+  }
+  playerAct({type:"move", id:pickBestMove(you, foe, "p")});
 }
 
 function openAtlas(){
@@ -3503,7 +3532,7 @@ function openHelp(){
     招式最多四招，含攻擊與變化。長按可換位置；平時第五招會詢問要換哪一招。掛機升級不會彈窗，新招先放保留區，停止後再替換或刪除。<br>
     <b>游泳</b>：取得潮浪徽章，隊伍有水系，在水邊按確認下水。<br>
     <b>飛天</b>：取得雷翼徽章，隊伍有龍系或會翼斬，地區圖點已去過的城鎮。<br>
-    隊伍最多帶 6 隻，多的進核倉，可叫回或滿員交換。選單可開自動尋怪：先選走過的草地，低血立刻治療再回掛機點；第二模式遇稀有自動捕捉。掛機中觸碰螢幕就會停止。<br><br>
+    隊伍最多帶 6 隻，多的進核倉，可叫回或滿員交換。選單可開自動尋怪：先選走過的草地，戰鬥會自動選克制招式或換優勢隊友；低血立刻治療再回掛機點；第二模式遇稀有自動捕捉。掛機中觸碰螢幕就會停止。<br><br>
     戰鬥右上角可切 1×／2×／3× 速度。選單有屬性相剋表。<br>
     遇到稀有種時，名稱旁會出現金色「稀有」標籤。<br><br>
     「新的旅程」選好最初核獸後才會覆蓋舊存檔；覆蓋前會另存一份，標題可按「恢復上一份存檔」。重要進度也可用選單匯出備份碼。
@@ -4167,25 +4196,64 @@ async function afterPlayerItem(){
 
 function scoreMove(id, atk, def, atkSide){
   const mv = MOVES[id];
-  if(!mv) return 0;
+  if(!mv) return -1;
   const e = mv.eff||{};
   const defSide = atkSide==="p" ? "f" : "p";
+  const myHp = atk.hp/maxHp(atk);
+  const canKo = expectedHit(atk, def, id) >= def.hp;
   if(mv.pow>0){
-    return mv.pow * typeMul(mv.type, SPECIES[def.sid].types) * ((mv.acc||100)/100);
+    const dmg = expectedHit(atk, def, id);
+    const eff = typeMul(mv.type, SPECIES[def.sid].types);
+    let s = dmg;
+    if(canKo) s += 125;
+    else if(dmg >= def.hp*0.7) s += 36;
+    if(eff>=2) s += 20;
+    else if(eff<=0.5) s -= 16;
+    if(mv.drain) s += Math.min(maxHp(atk)-atk.hp, dmg*(mv.drain||0))*0.45;
+    if(mv.sec){
+      if(mv.sec.status && canStatus(def, mv.sec.status)) s += 12*(mv.sec.chance||0);
+      if(mv.sec.flinch) s += 9*(mv.sec.chance||0);
+      if(mv.sec.stat) s += 6*(mv.sec.chance||0);
+      if(mv.sec.cnf && volOf(defSide).cnf<=0) s += 7*(mv.sec.chance||0);
+    }
+    return s;
   }
-  let s = 8;
-  if(e.status && canStatus(def, e.status)) s = 58;
-  if(e.cnf && volOf(defSide).cnf<=0) s = 42;
+  if(e.protect) return myHp<0.28 ? 58 : 3;
+  if(e.heal){
+    if(myHp<0.25) return 132;
+    if(myHp<0.4) return 96;
+    if(myHp<0.55) return 48;
+    return 6;
+  }
+  if(e.rest){
+    if(myHp<0.28) return 118;
+    if(myHp<0.4) return 80;
+    return 4;
+  }
+  if(e.status){
+    if(!canStatus(def, e.status)) return 1;
+    if(canKo) return 8;
+    const acc = (mv.acc==null?100:mv.acc)/100;
+    return 30*acc + (def.hp/maxHp(def)>0.55?12:0);
+  }
+  if(e.cnf){
+    if(volOf(defSide).cnf>0) return 1;
+    return 26*((mv.acc==null?100:mv.acc)/100);
+  }
   if(e.stat && e.self){
     const key = Object.keys(e.stat)[0];
-    s = (volOf(atkSide).stages[key]||0)<2 ? 48 : 6;
-  }else if(e.stat){
-    s = 36;
+    const cur = (volOf(atkSide).stages||{})[key]||0;
+    if(cur>=2) return 2;
+    if(bestAttackScore(atk, def) >= def.hp) return 7;
+    return 38 - cur*14;
   }
-  if(e.heal && atk.hp/maxHp(atk)<0.55) s = 86;
-  if(e.rest && atk.hp/maxHp(atk)<0.4) s = 78;
-  if(e.protect) s = atk.hp/maxHp(atk)<0.35 ? 40 : 12;
-  return s;
+  if(e.stat){
+    const key = Object.keys(e.stat)[0];
+    const cur = (volOf(defSide).stages||{})[key]||0;
+    if(cur<=-2) return 3;
+    return 20;
+  }
+  return 5;
 }
 function aiAct(){
   const foe = battle.foe;
@@ -4193,13 +4261,8 @@ function aiAct(){
   ensurePp(foe);
   const usable = foe.moves.filter(id=>ppLeft(foe,id)>0);
   if(!usable.length) return {type:"move", id:"struggle"};
-  let best = usable[0], score = -1;
-  usable.forEach(id=>{
-    const s = scoreMove(id, foe, you, "f");
-    if(s>score){ score=s; best=id; }
-  });
-  if(Math.random()<0.2) best = pick(usable);
-  return {type:"move", id:best};
+  const id = pickBestMove(foe, you, "f");
+  return {type:"move", id: Math.random()<0.18 ? pick(usable) : id};
 }
 
 async function playStatusFx(side, self){
