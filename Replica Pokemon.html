@@ -2357,7 +2357,7 @@ const GYMS = {
   gym8:{ name:"皇龍館", badge:"皇龍徽章", type:"龍" }
 };
 const GYM_KEYS = Object.keys(GYMS);
-const AUTO = { on:false, mode:null, hunt:null, pick:null, touchLock:0 };
+const AUTO = { on:false, mode:null, hunt:null, pick:null, touchLock:0, roam:null };
 function partyHasType(t){ return !!(S && S.party.some(m=>!isFaint(m) && SPECIES[m.sid].types.includes(t))); }
 function partyKnows(id){ return !!(S && S.party.some(m=>!isFaint(m) && (m.moves||[]).includes(id))); }
 function canSurf(){ return !!(S && S.flags.gym2 && partyHasType("水")); }
@@ -3510,6 +3510,7 @@ function startAuto(mode, mapId){
   }
   AUTO.hunt = dest;
   AUTO.pick = dest.map;
+  AUTO.roam = null;
   S.lastHunt = dest;
   if(S.map!==dest.map || S.x!==dest.x || S.y!==dest.y){
     S.map = dest.map; S.x = dest.x; S.y = dest.y;
@@ -3527,12 +3528,54 @@ function autoHealResume(){
   persist();
   toast("已治療，回到"+(MAPS[dest.map]?MAPS[dest.map].name:"草地")+"繼續");
 }
+function autoTileBlocked(x,y){
+  const t = tileAt(S.map,x,y);
+  if(!walkable(t) || npcAt(x,y)) return true;
+  return !!(MAPS[S.map].warps && MAPS[S.map].warps[t]);
+}
+function stepToNearestGrass(){
+  const q = [{x:S.x, y:S.y, first:null}];
+  const vis = new Set([S.x+","+S.y]);
+  while(q.length){
+    const cur = q.shift();
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const x = cur.x+dx, y = cur.y+dy, k = x+","+y;
+      if(vis.has(k)) continue;
+      const t = tileAt(S.map,x,y);
+      if(autoTileBlocked(x,y)) continue;
+      vis.add(k);
+      const first = cur.first || {dx,dy};
+      if(t==="g") return first;
+      q.push({x,y,first});
+    }
+  }
+  return null;
+}
+function nextGrassRoam(){
+  const opts = [[1,0],[-1,0],[0,1],[0,-1]].filter(([dx,dy])=>{
+    const x = S.x+dx, y = S.y+dy;
+    return tileAt(S.map,x,y)==="g" && !npcAt(x,y);
+  });
+  if(!opts.length) return null;
+  const prefer = AUTO.roam || dir;
+  const ahead = opts.find(([dx,dy])=>dx===prefer.x && dy===prefer.y);
+  if(ahead){
+    AUTO.roam = {x:ahead[0], y:ahead[1]};
+    return {dx:ahead[0], dy:ahead[1]};
+  }
+  const turns = opts.filter(([dx,dy])=> !(dx===-prefer.x && dy===-prefer.y));
+  const pool = turns.length ? turns : opts;
+  const pick = pool[Math.floor(Math.random()*pool.length)];
+  AUTO.roam = {x:pick[0], y:pick[1]};
+  return {dx:pick[0], dy:pick[1]};
+}
 function autoWander(){
   if(!S || busy || battle || walk.active) return;
   if(partyNeedHeal()){ autoHealResume(); return; }
   const dest = AUTO.hunt || S.lastHunt || defaultHunt();
   if(!canHunt(S.map) || S.map!==dest.map){
     AUTO.hunt = dest;
+    AUTO.roam = null;
     S.map = dest.map; S.x = dest.x; S.y = dest.y;
     return;
   }
@@ -3541,21 +3584,16 @@ function autoWander(){
     S.map = dest.map; S.x = dest.x; S.y = dest.y;
     return;
   }
-  const grass = [];
-  map.tiles.forEach((row,y)=>{
-    for(let x=0;x<row.length;x++) if(row[x]==="g") grass.push({x,y});
-  });
-  let dx=0, dy=0;
-  if(grass.length){
-    const t = grass[(worldT/400|0)%grass.length];
-    if(t.x>S.x) dx=1; else if(t.x<S.x) dx=-1;
-    else if(t.y>S.y) dy=1; else if(t.y<S.y) dy=-1;
-  }else{
-    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
-    const d = dirs[(worldT/300|0)%4];
-    dx=d[0]; dy=d[1];
+  if(tileAt(S.map,S.x,S.y)!=="g"){
+    const step = stepToNearestGrass();
+    if(step){ tryMove(step.dx, step.dy); return; }
+    const spot = huntSpot(S.map);
+    S.x = spot.x; S.y = spot.y;
+    AUTO.roam = null;
+    return;
   }
-  if(dx||dy) tryMove(dx,dy);
+  const step = nextGrassRoam();
+  if(step) tryMove(step.dx, step.dy);
 }
 function queueAutoBattle(){
   if(!AUTO.on || !battle) return;
