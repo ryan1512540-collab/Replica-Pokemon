@@ -141,6 +141,7 @@
   #bcmd button .mv-pp{flex:0 0 auto;font-size:11px;font-weight:800;color:var(--gold)}
   #bcmd button .mv-pp.out{color:var(--danger)}
   #bcmd button .mv-sub{font-size:11px;font-weight:700;color:var(--muted)}
+  #bcmd button.dim{opacity:.55}
 
   #overlay{position:absolute;inset:0;background:rgba(6,10,16,.72);display:none;
     z-index:20;flex-direction:column;justify-content:flex-end;touch-action:auto;
@@ -167,10 +168,23 @@
     background:#e85d5d;color:#fff;font-size:10px;font-weight:900}
   .shop-row,.bag-row{align-items:flex-start}
   .shop-info,.bag-info{flex-direction:column;align-items:flex-start;gap:3px}
-  .mv-row{align-items:flex-start}
+  .mv-row{align-items:flex-start;touch-action:manipulation}
   .mv-info{flex-direction:column;align-items:flex-start;gap:3px;text-align:left}
+  .mv-row.pick,.listbtn.pick{outline:2px solid var(--gold);outline-offset:0}
   .item-desc{font-size:12px;font-weight:800;color:var(--gold)}
   .item-note{font-size:12px;font-weight:600;color:var(--muted);line-height:1.55}
+  .atlas{position:relative;height:360px;min-height:320px;background:
+    radial-gradient(circle at 30% 40%,#1a3040,#0c141c 70%);border-radius:14px;
+    overflow:auto;border:1px solid var(--line)}
+  .atlas-in{position:relative;width:520px;height:420px;margin:0 auto}
+  .anode{position:absolute;transform:translate(-50%,-50%);min-width:54px;padding:4px 6px;
+    border-radius:8px;border:1px solid var(--line);background:#1a2740;font-size:10px;
+    font-weight:800;text-align:center;line-height:1.25;cursor:default}
+  .anode.town{background:#2a3d28}
+  .anode.gym{background:#3d2a18;color:var(--gold)}
+  .anode.here{box-shadow:0 0 0 2px var(--gold)}
+  .anode.fly{cursor:pointer}
+  .anode small{display:block;color:var(--muted);font-size:9px}
   #sheet .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .type{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:800;
     color:#111;margin-right:3px}
@@ -188,7 +202,7 @@
   <section id="title" class="view on">
     <canvas class="mark" id="titleArt" width="120" height="120"></canvas>
     <h1>核獸紀行</h1>
-    <p class="muted">暉光地方：四座城鎮、四座道館。<br>收編核獸、走完一整塊地區。</p>
+    <p class="muted">暉光地方：城鎮、八道館。<br>收編核獸、走完一整塊地區。</p>
     <div class="btns">
       <button type="button" class="gold" id="btnNew" onclick="window.startNewGame&&window.startNewGame()">新的旅程</button>
       <button type="button" id="btnContinue" onclick="window.continueGame&&window.continueGame()">繼續冒險</button>
@@ -648,7 +662,11 @@ const SPRITES = {
   dawnbloom:{ pal:{a:"#ff8a65",b:"#81c784",c:"#ffe0b2",d:"#fff",e:"#4e342e",f:"#ffab40",o:"#201408"},
     f:["....bbbbbb......","...baaabaab.....","...badadab......","....aaaaaa......",".....cccc.......",".....ceec.......","......ff........","................","................","................","................","................","................","................","................","................"]},
   voidcore:{ pal:{a:"#311b92",b:"#12081c",c:"#7e57c2",d:"#fff59d",e:"#000",f:"#4527a0",o:"#080410"},
-    f:["......bb........",".....bbbb.......","..aa.baab.aa....","..aaaaaaaaaa....","...aceeeca......","...aaaaaaaa.....","..aaaaaaaaaa....","..dd......dd....","................","................","................","................","................","................","................","................"]}
+    f:["......bb........",".....bbbb.......","..aa.baab.aa....","..aaaaaaaaaa....","...aceeeca......","...aaaaaaaa.....","..aaaaaaaaaa....","..dd......dd....","................","................","................","................","................","................","................","................"]},
+  abyssreign:{ pal:{a:"#0d47a1",b:"#01579b",c:"#4fc3f7",d:"#e3f7ff",e:"#061018",f:"#81d4fa",o:"#040c14"},
+    f:["........bb......",".......bbb......","..aaaaaabaaaa...","aaaaaaaaaaaaaaa.","aaccedcaaaaaaaaa","aaaaaaaaaaaaaaa.","aa.aaaaaaaa.aa..","...aa......aa...","....ff....ff....","................","................","................","................","................","................","................"]},
+  coretitan:{ pal:{a:"#546e7a",b:"#263238",c:"#cfd8dc",d:"#ffd54f",e:"#102027",f:"#90a4ae",o:"#0a1014"},
+    f:["....b.d.d.b.....","...bcccccccb....","..bcaaaaaaacb...","..caeddeeac.....","bbaaaaaaaaaabb..","..aaaaaaaaaa....","..aa.aaaa.aa....","..bb......bb....","................","................","................","................","................","................","................","................"]}
 };
 
 function shadeHex(hex, amt){
@@ -896,6 +914,9 @@ const MOVES = {
   swarm:{name:"蟲潮", type:"蟲", pow:80, acc:90, pp:15},
   draco:{name:"龍息", type:"龍", pow:60, acc:100, pp:20},
   wyrm:{name:"龍擊", type:"龍", pow:90, acc:90, pp:10},
+  solflare:{name:"日冕", type:"火", pow:100, acc:90, pp:8},
+  abyssmaw:{name:"淵噬", type:"水", pow:100, acc:90, pp:8},
+  corecannon:{name:"核芯砲", type:"鋼", pow:100, acc:90, pp:8},
   struggle:{name:"掙扎", type:"普", pow:40, acc:100, pp:1}
 };
 
@@ -908,19 +929,25 @@ const SPECIES = {
     learn:[[1,"tackle"],[1,"ember"],[9,"quick"],[16,"flare"],[22,"roar"]] },
   sunlion:{ name:"日獅", cat:"神獸", types:["火"], evo:null, rate:35, exp:210,
     base:{hp:90,atk:110,def:78,spd:96},
-    learn:[[1,"flare"],[1,"roar"],[22,"roar"],[28,"inferno"]] },
+    learn:[[1,"flare"],[1,"roar"],[22,"roar"],[28,"inferno"],[36,"solflare"]] },
   droplet:{ name:"潮滴", cat:"精靈", types:["水"], evo:["abyssfin",16], rate:180, exp:55,
     base:{hp:48,atk:50,def:62,spd:46},
     learn:[[1,"tackle"],[4,"watergun"],[10,"bite"],[16,"surge"]] },
-  abyssfin:{ name:"淵鮫", cat:"神獸", types:["水"], evo:null, rate:60, exp:140,
+  abyssfin:{ name:"淵鮫", cat:"神獸", types:["水"], evo:["abyssreign",28], rate:60, exp:140,
     base:{hp:78,atk:82,def:80,spd:68},
-    learn:[[1,"tackle"],[1,"watergun"],[10,"bite"],[16,"surge"]] },
+    learn:[[1,"tackle"],[1,"watergun"],[10,"bite"],[16,"surge"],[22,"hex"]] },
+  abyssreign:{ name:"淵皇", cat:"神獸", types:["水","龍"], evo:null, rate:30, exp:220,
+    base:{hp:96,atk:108,def:92,spd:78},
+    learn:[[1,"surge"],[1,"bite"],[22,"hex"],[28,"abyssmaw"],[36,"wyrm"]] },
   gearbit:{ name:"齒芯", cat:"機械", types:["鋼"], evo:["mechhound",16], rate:160, exp:60,
     base:{hp:50,atk:54,def:72,spd:40},
     learn:[[1,"tackle"],[5,"metal"],[11,"spark"],[16,"gear"]] },
-  mechhound:{ name:"機獒", cat:"機械", types:["鋼","電"], evo:null, rate:55, exp:150,
+  mechhound:{ name:"機獒", cat:"機械", types:["鋼","電"], evo:["coretitan",28], rate:55, exp:150,
     base:{hp:74,atk:90,def:98,spd:58},
     learn:[[1,"tackle"],[1,"metal"],[11,"spark"],[16,"gear"],[20,"thunder"]] },
+  coretitan:{ name:"核鎧", cat:"機械", types:["鋼","電"], evo:null, rate:28, exp:225,
+    base:{hp:98,atk:104,def:120,spd:64},
+    learn:[[1,"gear"],[1,"thunder"],[20,"thunder"],[28,"corecannon"],[36,"cannon"]] },
   sprout:{ name:"葉芽", cat:"精靈", types:["草"], evo:["vineguard",14], rate:200, exp:50,
     base:{hp:46,atk:50,def:50,spd:48},
     learn:[[1,"tackle"],[4,"leaf"],[10,"vine"]] },
@@ -1353,9 +1380,9 @@ const SPECIES = {
 };
 
 const STARTERS = [
-  { sid:"emberkit", blurb:"火系精靈。速度快，適合先手壓制。" },
-  { sid:"droplet", blurb:"水系精靈。較耐久，對岩石與火焰有優勢。" },
-  { sid:"gearbit", blurb:"機械寵物。防高，進化後兼具鋼鐵與雷電。" }
+  { sid:"emberkit", blurb:"火系精靈。三階日獅可學專屬日冕。" },
+  { sid:"droplet", blurb:"水系精靈。三階淵皇可學專屬淵噬。" },
+  { sid:"gearbit", blurb:"機械寵物。防高，三階核鎧可學專屬核芯砲。" }
 ];
 
 function maxHp(mon){
@@ -1398,11 +1425,83 @@ function hasMovePp(mon){
   return (mon.moves||[]).some(id=>ppLeft(mon,id)>0);
 }
 function learnMove(mon, id){
-  if(!id || mon.moves.includes(id)) return;
-  if(mon.moves.length<4) mon.moves.push(id);
-  else mon.moves = mon.moves.slice(1).concat([id]);
+  if(!id || mon.moves.includes(id)) return false;
+  if(mon.moves.length>=4) return false;
+  mon.moves.push(id);
   ensurePp(mon);
   mon.pp[id] = maxPp(id);
+  return true;
+}
+function swapMoves(mon, a, b){
+  if(!mon || a===b || a<0 || b<0 || a>=mon.moves.length || b>=mon.moves.length) return;
+  const t = mon.moves[a];
+  mon.moves[a] = mon.moves[b];
+  mon.moves[b] = t;
+  persist();
+}
+async function offerLearn(mon, id){
+  if(!id || !MOVES[id] || mon.moves.includes(id)) return;
+  if(mon.moves.length<4){
+    learnMove(mon, id);
+    persist();
+    blog(`${monName(mon)} 學會了 ${MOVES[id].name}！`);
+    await wait(450);
+    return;
+  }
+  blog(`${monName(mon)} 想學 ${MOVES[id].name}！可是已經有四招。`);
+  await wait(280);
+  const idx = await pickReplaceMove(mon, id);
+  if(idx==null){
+    blog(`沒有學會 ${MOVES[id].name}。`);
+    await wait(350);
+    return;
+  }
+  const old = mon.moves[idx];
+  mon.moves[idx] = id;
+  ensurePp(mon);
+  mon.pp[id] = maxPp(id);
+  persist();
+  blog(`遺忘了 ${MOVES[old].name}，學會了 ${MOVES[id].name}！`);
+  await wait(480);
+}
+function pickReplaceMove(mon, newId){
+  return new Promise(resolve=>{
+    const mv = MOVES[newId];
+    const rows = mon.moves.map((id,i)=>`<button type="button" class="listbtn" data-r="${i}">
+      <div class="l mv-info">${typeBadge(MOVES[id].type)}${MOVES[id].name}
+      <span class="item-desc">${moveStatLine(MOVES[id])}</span></div></button>`).join("");
+    openSheet(`<h2>要換掉哪一招？</h2>
+      <div class="sheet-body">
+        <p>想學 ${typeBadge(mv.type)}${mv.name}</p>
+        <p class="item-desc">${moveStatLine(mv)}</p>
+        <p class="muted" style="margin:8px 0">點選要遺忘的招式，或放棄學習。</p>
+        ${rows}
+      </div>
+      <div class="sheet-actions"><button type="button" class="wide" id="learnSkip">放棄學習</button></div>`);
+    sheet.querySelectorAll("[data-r]").forEach(b=>{
+      b.onclick = ()=>{ closeOverlay(); resolve(+b.getAttribute("data-r")); };
+    });
+    $("learnSkip").onclick = ()=>{ closeOverlay(); resolve(null); };
+  });
+}
+function bindHold(el, onTap, onHold){
+  let timer=null, held=false;
+  const clear = ()=>{ if(timer){ clearTimeout(timer); timer=null; } };
+  el.addEventListener("pointerdown", e=>{
+    if(e.button && e.button!==0) return;
+    held=false;
+    clear();
+    timer = setTimeout(()=>{ held=true; timer=null; if(onHold) onHold(); }, 480);
+  });
+  el.addEventListener("pointerup", ()=>{
+    const wasHeld = held;
+    clear();
+    if(!wasHeld && onTap) onTap();
+    held=false;
+  });
+  el.addEventListener("pointerleave", clear);
+  el.addEventListener("pointercancel", clear);
+  el.addEventListener("contextmenu", e=> e.preventDefault());
 }
 function createMon(sid, lv){
   const mon = { uid:uid(), sid, lv, exp:0, moves:movesFor(sid,lv), pp:{} };
@@ -1444,7 +1543,7 @@ const ITEMS = {
 
 const MAPS = {
   town:{
-    name:"暉光鎮",
+    name:"暉光鎮", fly:true,
     tiles:[
       "#####################",
       "#......O............#",
@@ -1464,7 +1563,7 @@ const MAPS = {
     warps:{ A:{map:"route1",x:10,y:2}, J:{map:"coast",x:2,y:7}, O:{map:"forest",x:10,y:15} },
     npcs:[
       {x:1,y:9,ch:"教",name:"核導教授",color:"#f0c14b",
-        lines:["這裡是暉光地方。四座城鎮、四座道館。","南：翠葉道與燼炎館。東：潮聲岸通往潮音港。","北：暗影林與星落。西經核廠到鋼脊市。","碎岩徑深處是霜霧谷。選單可看地區圖。"]}
+        lines:["這裡是暉光地方。八座道館散落各地。","南：翠葉道與燼炎館。東：潮聲岸通往浪之館。","北：暗影林可去翠冠、夜冕與皇龍。","西經核廠到鋼脊、雷翼。選單有地區圖與飛天。"]}
     ]
   },
   route1:{
@@ -1485,10 +1584,10 @@ const MAPS = {
       "#####################"
     ],
     warps:{ B:{map:"town",x:11,y:11}, C:{map:"quarry",x:2,y:5}, D:{map:"factory",x:18,y:5}, E:{map:"gym",x:10,y:2} },
-    grass:[["sprout",3,7,3],["pebble",3,6,2],["voltmouse",4,7,2],["duskcat",5,8,2],["wisp",4,7,2],["bloombell",5,8,1],["sandburrow",4,7,1],["puffowl",4,7,2],["cindermoth",4,8,1],["slimepup",3,7,2],["thornfox",5,8,1],["grublet",3,6,2],["mossback",4,7,2],["petalpup",4,8,2],["glowbug",4,7,2],["cloudlamb",3,6,1],["seedrat",3,7,3],["dewdrop",3,7,2],["nutkin",3,7,2],["sparkpup",4,7,2],["bramble",3,6,2],["lavaworm",4,8,1],["dawnbloom",5,8,1],["ripplepup",4,7,2],["emberpig",4,7,1],["sunbeetle",4,8,1],["thornrat",8,12,0.5],["thornback",8,12,0.5]],
+    grass:[["sprout",2,4,3],["pebble",2,4,2],["voltmouse",2,4,2],["duskcat",3,5,2],["wisp",2,4,2],["bloombell",3,5,1],["sandburrow",2,4,1],["puffowl",2,4,2],["cindermoth",2,5,1],["slimepup",2,4,2],["thornfox",3,5,1],["grublet",2,4,2],["mossback",2,4,2],["petalpup",2,5,2],["glowbug",2,4,2],["cloudlamb",2,4,1],["seedrat",2,4,3],["dewdrop",2,4,2],["nutkin",2,4,2],["sparkpup",2,4,2],["bramble",2,4,2],["lavaworm",2,5,1],["dawnbloom",3,5,1],["ripplepup",2,4,2],["emberpig",2,4,1],["sunbeetle",2,5,1],["thornrat",4,6,0.5],["thornback",4,6,0.5]],
     npcs:[
       {x:3,y:5,ch:"訓",name:"見習訓練家",color:"#7ec8ff",
-        trainer:{name:"見習訓練家", prize:400, team:[["sprout",6],["pebble",6]]}}
+        trainer:{name:"見習訓練家", prize:400, team:[["sprout",4],["pebble",4]]}}
     ]
   },
   quarry:{
@@ -1578,7 +1677,7 @@ const MAPS = {
     ]
   },
   steel:{
-    name:"鋼脊市",
+    name:"鋼脊市", fly:true,
     tiles:[
       "#####################",
       "#...................#",
@@ -1590,10 +1689,10 @@ const MAPS = {
       "#....####...........#",
       "#....#屋##...........#",
       "#....####...........#",
-      "#...................#",
+      "#..........W........#",
       "#####################"
     ],
-    warps:{ K:{map:"factory",x:18,y:5}, L:{map:"gym3",x:10,y:2} },
+    warps:{ K:{map:"factory",x:18,y:5}, L:{map:"gym3",x:10,y:2}, W:{map:"mesa",x:1,y:6} },
     npcs:[
       {x:10,y:4,ch:"工",name:"鍛造師",color:"#90a4ae",
         lines:["鋼脊市靠核廠的舊零件過活。","東邊就是鋼之館。機械核獸在這裡很常見。"]}
@@ -1654,14 +1753,14 @@ const MAPS = {
       "#####################"
     ],
     warps:{ J:{map:"town",x:18,y:12}, M:{map:"port",x:10,y:2} },
-    grass:[["mistgull",6,11,3],["tidecrab",7,12,2],["kelpmaid",8,13,2],["coilray",9,14,1],["sandburrow",6,10,1],["slimepup",6,11,2],["stormgull",12,16,1],["inkling",7,12,2],["ripplefin",6,11,3],["mirrorcarp",12,16,1],["dewdrop",6,11,2],["foamseal",7,12,2],["ripplepup",6,11,2],["kelpcub",7,12,2],["goldfish",8,13,1],["rivertail",12,16,0.8],["seawolf",12,16,0.7],["tidekelp",12,16,0.7]],
+    grass:[["mistgull",3,5,3],["tidecrab",3,6,2],["kelpmaid",4,6,2],["coilray",4,7,1],["sandburrow",3,5,1],["slimepup",3,5,2],["stormgull",7,10,1],["inkling",3,6,2],["ripplefin",3,5,3],["mirrorcarp",7,10,1],["dewdrop",3,5,2],["foamseal",3,6,2],["ripplepup",3,5,2],["kelpcub",3,6,2],["goldfish",4,6,1],["rivertail",7,10,0.8],["seawolf",7,10,0.7],["tidekelp",7,10,0.7]],
     npcs:[
       {x:8,y:5,ch:"漁",name:"潮間帶訓練家",color:"#4fc3f7",
-        trainer:{name:"潮間帶訓練家", prize:900, team:[["tidecrab",12],["mistgull",13]]}}
+        trainer:{name:"潮間帶訓練家", prize:900, team:[["tidecrab",7],["mistgull",7]]}}
     ]
   },
   port:{
-    name:"潮音港",
+    name:"潮音港", fly:true,
     tiles:[
       "#####################",
       "#..........M........#",
@@ -1726,7 +1825,7 @@ const MAPS = {
       "#..........,........#",
       "#..ggg,,,ggggg......#",
       "#..ggg,,,ggggg......#",
-      "#.....,,,...........#",
+      "#V....,,,...........#",
       "#..gggg,,ggggg......#",
       "#..T...,,ggggg......#",
       "#..........,........#",
@@ -1739,18 +1838,18 @@ const MAPS = {
       "#..........O........#",
       "#####################"
     ],
-    warps:{ O:{map:"town",x:7,y:2}, Q:{map:"shrine",x:10,y:10} },
-    grass:[["duskcat",6,12,3],["nightbat",8,14,3],["wisp",7,12,2],["bloombell",8,13,1],["umbral",14,18,1],["puffowl",7,12,2],["hexdoll",10,16,1],["thornfox",8,14,1],["nightcloak",15,19,1],["petalpup",6,12,2],["blossomwolf",14,18,1],["hexmoth",10,16,2],["grublet",6,11,2],["glowbug",7,13,2],["duskpup",6,12,2],["shadowgrub",7,13,2],["hexcat",8,14,2],["nullfox",10,16,1],["mossowl",6,12,2],["emberowl",8,14,1],["drakling",10,16,0.5],["nightfang",15,19,0.7],["voidmoth",14,18,0.7],["groveowl",14,18,0.6],["canopy",14,18,0.6]],
+    warps:{ O:{map:"town",x:7,y:2}, Q:{map:"shrine",x:10,y:10}, V:{map:"grove",x:1,y:6} },
+    grass:[["duskcat",3,5,3],["nightbat",4,6,3],["wisp",3,5,2],["bloombell",3,5,1],["umbral",8,12,1],["puffowl",3,5,2],["hexdoll",6,9,1],["thornfox",4,6,1],["nightcloak",9,13,1],["petalpup",3,5,2],["blossomwolf",8,12,1],["hexmoth",5,8,2],["grublet",3,5,2],["glowbug",3,6,2],["duskpup",3,5,2],["shadowgrub",3,6,2],["hexcat",4,6,2],["nullfox",6,9,1],["mossowl",3,5,2],["emberowl",4,6,1],["drakling",6,9,0.5],["nightfang",9,13,0.7],["voidmoth",8,12,0.7],["groveowl",8,12,0.6],["canopy",8,12,0.6]],
     npcs:[
       {x:3,y:7,ch:"夜",name:"夜行者",color:"#7e57c2",
-        trainer:{name:"夜行者", prize:1300, team:[["nightbat",15],["duskcat",16]]}}
+        trainer:{name:"夜行者", prize:1300, team:[["nightbat",8],["duskcat",8]]}}
     ]
   },
   shrine:{
     name:"靈祠",
     tiles:[
       "#####################",
-      "#...................#",
+      "#X..................#",
       "#....####...........#",
       "#....#屋##...........#",
       "#....####...........#",
@@ -1762,7 +1861,7 @@ const MAPS = {
       "#..........Q........#",
       "#####################"
     ],
-    warps:{ Q:{map:"forest",x:11,y:2}, R:{map:"star",x:2,y:6} },
+    warps:{ Q:{map:"forest",x:11,y:2}, R:{map:"star",x:2,y:6}, X:{map:"duskroad",x:1,y:5} },
     grass:[["wisp",8,14,3],["lantern",12,17,2],["bellsong",10,16,2],["umbral",15,19,1],["staraxis",18,22,0.12],["papercrane",8,14,3],["thousandfold",15,20,1],["hexdoll",12,17,1],["sageowl",14,18,1],["hexmoth",10,16,2],["stardrift",16,22,0.35],["lampfly",12,18,1],["spiritowl",8,14,2],["starling",10,16,2],["hexcat",10,16,1],["mistfox",10,16,1],["ghostowl",15,20,0.6],["witchcat",15,20,0.6],["cometail",16,22,0.35]],
     npcs:[
       {x:6,y:5,ch:"祠",name:"祠守",color:"#e1bee7",
@@ -1770,7 +1869,7 @@ const MAPS = {
     ]
   },
   star:{
-    name:"星落村",
+    name:"星落村", fly:true,
     tiles:[
       "#####################",
       "#..........T........#",
@@ -1795,7 +1894,7 @@ const MAPS = {
     name:"星落峰",
     tiles:[
       "#####################",
-      "#...................#",
+      "#..........Y........#",
       "#..ggg.....ggg......#",
       "#..ggg.....ggg......#",
       "#...................#",
@@ -1807,8 +1906,107 @@ const MAPS = {
       "#..........T........#",
       "#####################"
     ],
-    warps:{ T:{map:"star",x:11,y:2} },
+    warps:{ T:{map:"star",x:11,y:2}, Y:{map:"dragongate",x:1,y:6} },
     grass:[["staraxis",16,24,1],["moonfang",16,22,1],["snowolf",15,20,1],["voltmoth",14,20,1],["ironowl",15,21,1],["aurora",16,22,1],["clockwork",15,20,1],["magnetide",14,20,1],["frosthare",15,21,1],["skydrake",16,22,0.8],["ashwyrm",18,24,0.45],["stardrift",16,22,1],["stormram",15,20,1],["lampfly",14,20,1],["verdra",18,24,0.4],["cometail",16,22,0.8],["ridgehorn",16,22,0.6],["voidcore",20,26,0.18],["bronzeowl",15,21,1],["thundercarp",16,22,0.5],["blazeowl",16,22,0.6],["prismite",16,22,0.5],["solscarab",15,21,0.6]]
+  },
+  grove:{
+    name:"翠冠徑", fly:false, marks:[{x:10,y:1,text:"翠冠館",kind:"gym"}],
+    tiles:[
+      "#####################",
+      "#..........5........#",
+      "#..........,........#",
+      "#..ggg,,,ggggg......#",
+      "#..ggg,,,ggggg......#",
+      "#.....,,,...........#",
+      "#V....,,............#",
+      "#..gggg,,ggggg......#",
+      "#...................#",
+      "#####################"
+    ],
+    warps:{ V:{map:"forest",x:1,y:5}, 5:{map:"gym5",x:10,y:2} },
+    grass:[["sprout",10,16,3],["vineguard",14,18,2],["bloombell",10,16,2],["petalpup",10,16,2],["grublet",10,15,2],["oakcoloss",18,22,0.5],["bloomqueen",16,20,0.7],["dawnbloom",12,18,1]],
+    npcs:[{x:6,y:5,ch:"園",name:"園丁",color:"#66bb6a",lines:["北上就是翠冠館。草系核獸成群。"]}]
+  },
+  gym5:{
+    name:"翠冠館", fly:false,
+    tiles:["#####################","#..........5........#","#...................#","#..gggg...gggg......#","#...................#","#...................#","#..........G........#","#...................#","#####################"],
+    warps:{ 5:{map:"grove",x:11,y:2} },
+    npcs:[{x:11,y:6,ch:"館",name:"館主・芽",color:"#66bb6a",
+      trainer:{name:"館主・芽", prize:3000, gym:"gym5", team:[["vineguard",26],["bloombell",27],["oakcoloss",30]]}}]
+  },
+  mesa:{
+    name:"雷鳴原", fly:false, marks:[{x:10,y:1,text:"雷翼館",kind:"gym"}],
+    tiles:[
+      "#####################",
+      "#..........6........#",
+      "#..........,........#",
+      "#..ggg,,,ggggg......#",
+      "#..ggg,,,ggggg......#",
+      "#.....,,,...........#",
+      "#W....,,............#",
+      "#..gggg,,ggggg......#",
+      "#...................#",
+      "#####################"
+    ],
+    warps:{ W:{map:"steel",x:11,y:10}, 6:{map:"gym6",x:10,y:2} },
+    grass:[["voltmouse",16,22,3],["voltmoth",18,24,2],["sparkpup",16,21,2],["coilray",17,22,1],["stormgull",18,24,1],["voltwolf",20,26,0.6],["stormram",18,24,1]],
+    npcs:[{x:8,y:5,ch:"雷",name:"雷徒",color:"#ffd54f",lines:["北面雷翼館主擅長電與飛。"]}]
+  },
+  gym6:{
+    name:"雷翼館", fly:false,
+    tiles:["#####################","#..........6........#","#...................#","#..####...####......#","#...................#","#...................#","#..........G........#","#...................#","#####################"],
+    warps:{ 6:{map:"mesa",x:11,y:2} },
+    npcs:[{x:11,y:6,ch:"館",name:"館主・閃",color:"#ffd54f",
+      trainer:{name:"館主・閃", prize:3400, gym:"gym6", team:[["voltmoth",30],["stormgull",31],["skydrake",34]]}}]
+  },
+  duskroad:{
+    name:"暮影道", fly:false, marks:[{x:10,y:1,text:"夜冕館",kind:"gym"}],
+    tiles:[
+      "#####################",
+      "#..........7........#",
+      "#..........,........#",
+      "#..ggg,,,ggggg......#",
+      "#..ggg,,,ggggg......#",
+      "#X....,,,...........#",
+      "#..gggg,,ggggg......#",
+      "#...................#",
+      "#####################"
+    ],
+    warps:{ X:{map:"shrine",x:1,y:1}, 7:{map:"gym7",x:10,y:2} },
+    grass:[["duskcat",18,24,3],["umbral",20,26,2],["nightbat",18,24,2],["hexcat",19,25,1],["nightcloak",22,28,0.6],["voidcore",24,30,0.2]],
+    npcs:[{x:6,y:4,ch:"暮",name:"夜行僧",color:"#9575cd",lines:["夜冕館只在暗處開門。"]}]
+  },
+  gym7:{
+    name:"夜冕館", fly:false,
+    tiles:["#####################","#..........7........#","#...................#","#...................#","#...................#","#...................#","#..........G........#","#...................#","#####################"],
+    warps:{ 7:{map:"duskroad",x:11,y:2} },
+    npcs:[{x:11,y:6,ch:"館",name:"館主・冥",color:"#9575cd",
+      trainer:{name:"館主・冥", prize:3800, gym:"gym7", team:[["umbral",34],["nightcloak",35],["moonfang",38]]}}]
+  },
+  dragongate:{
+    name:"龍門峽", fly:false, marks:[{x:10,y:1,text:"皇龍館",kind:"gym"}],
+    tiles:[
+      "#####################",
+      "#..........8........#",
+      "#..........,........#",
+      "#..ggg,,,ggggg......#",
+      "#..ggg,,,ggggg......#",
+      "#.....,,,...........#",
+      "#Y....,,............#",
+      "#..gggg,,ggggg......#",
+      "#...................#",
+      "#####################"
+    ],
+    warps:{ Y:{map:"peak",x:11,y:1}, 8:{map:"gym8",x:10,y:2} },
+    grass:[["drakling",22,28,3],["wyrmlet",22,28,2],["coralwyrm",24,30,1],["skydrake",24,30,1],["ashwyrm",26,32,0.5],["verdra",26,32,0.45],["voidcore",28,34,0.2]],
+    npcs:[{x:8,y:5,ch:"門",name:"龍衛",color:"#7e57c2",lines:["皇龍館是暉光第八館。"]}]
+  },
+  gym8:{
+    name:"皇龍館", fly:false,
+    tiles:["#####################","#..........8........#","#...................#","#...................#","#...................#","#...................#","#..........G........#","#...................#","#####################"],
+    warps:{ 8:{map:"dragongate",x:11,y:2} },
+    npcs:[{x:11,y:6,ch:"館",name:"館主・宸",color:"#7e57c2",
+      trainer:{name:"館主・宸", prize:4800, gym:"gym8", team:[["skydrake",40],["ashwyrm",41],["voidcore",44]]}}]
   }
 };
 
@@ -1818,7 +2016,69 @@ function tileAt(map,x,y){
   return rows[y][x];
 }
 function walkable(ch){
-  return !!ch && ch!=="#" && ch!=="屋" && ch!=="~";
+  if(!ch || ch==="#" || ch==="屋") return false;
+  if(ch==="~") return !!(S && (S.surf || canSurf()));
+  return true;
+}
+
+const GYMS = {
+  gym1:{ name:"燼炎館", badge:"燼炎徽章", type:"火" },
+  gym2:{ name:"浪之館", badge:"潮浪徽章", type:"水" },
+  gym3:{ name:"鋼之館", badge:"鋼脊徽章", type:"鋼" },
+  gym4:{ name:"霧冠館", badge:"霜霧徽章", type:"冰" },
+  gym5:{ name:"翠冠館", badge:"翠冠徽章", type:"草" },
+  gym6:{ name:"雷翼館", badge:"雷翼徽章", type:"電" },
+  gym7:{ name:"夜冕館", badge:"夜冕徽章", type:"暗" },
+  gym8:{ name:"皇龍館", badge:"皇龍徽章", type:"龍" }
+};
+const GYM_KEYS = Object.keys(GYMS);
+const AUTO = { on:false, mode:null, hunt:null, pick:null };
+function partyHasType(t){ return !!(S && S.party.some(m=>!isFaint(m) && SPECIES[m.sid].types.includes(t))); }
+function partyKnows(id){ return !!(S && S.party.some(m=>!isFaint(m) && (m.moves||[]).includes(id))); }
+function canSurf(){ return !!(S && S.flags.gym2 && partyHasType("水")); }
+function canFly(){ return !!(S && S.flags.gym6 && (partyHasType("龍") || partyKnows("wing"))); }
+function badgeCount(){ return S ? GYM_KEYS.filter(k=>S.flags[k]).length : 0; }
+function markVisited(){ if(S){ S.visited = S.visited||{}; S.visited[S.map]=1; } }
+function partyNeedHeal(){
+  const live = (S.party||[]).filter(m=>!isFaint(m));
+  if(!live.length) return true;
+  return live.some(m=> m.hp/maxHp(m) < 0.35);
+}
+function grassTiles(mapId){
+  const rows = MAPS[mapId] && MAPS[mapId].tiles;
+  const out = [];
+  if(!rows) return out;
+  rows.forEach((row,y)=>{
+    for(let x=0;x<row.length;x++) if(row[x]==="g") out.push({x,y});
+  });
+  return out;
+}
+function canHunt(mapId){
+  const m = MAPS[mapId];
+  return !!(m && m.grass && grassTiles(mapId).length);
+}
+function huntSpot(mapId){
+  const tiles = grassTiles(mapId);
+  if(!tiles.length) return {map:mapId, x:4, y:4};
+  const mid = tiles[tiles.length>>1];
+  return {map:mapId, x:mid.x, y:mid.y};
+}
+function defaultHunt(){
+  if(S && canHunt(S.map)){
+    if(tileAt(S.map, S.x, S.y)==="g") return {map:S.map, x:S.x, y:S.y};
+    return huntSpot(S.map);
+  }
+  if(S && S.lastHunt && canHunt(S.lastHunt.map)) return S.lastHunt;
+  const visited = Object.keys((S && S.visited)||{}).filter(canHunt);
+  if(visited.length) return huntSpot(visited[visited.length-1]);
+  return huntSpot("route1");
+}
+function huntChoices(){
+  return Object.keys(MAPS).filter(id => canHunt(id) && S.visited && S.visited[id]);
+}
+function huntName(h){
+  if(!h) return "尚未指定";
+  return (MAPS[h.map] && MAPS[h.map].name) || h.map;
 }
 
 let S = null;
@@ -1847,7 +2107,11 @@ function defaultState(){
     box:[],
     seen:{},
     caught:{},
-    flags:{ gym1:false, gym2:false, gym3:false, gym4:false, beaten:{} },
+    flags:{ gym1:false, gym2:false, gym3:false, gym4:false, gym5:false, gym6:false, gym7:false, gym8:false, beaten:{} },
+    visited:{ town:1 },
+    surf:false,
+    lastHeal:{ map:"town", x:3, y:3 },
+    lastHunt:null,
     play:0
   };
 }
@@ -1858,7 +2122,10 @@ function persist(){
 }
 function normalizeSave(data){
   if(!data || !data.party) return null;
-  data.flags = Object.assign({gym1:false,gym2:false,gym3:false,gym4:false,beaten:{}}, data.flags||{});
+  data.flags = Object.assign({gym1:false,gym2:false,gym3:false,gym4:false,gym5:false,gym6:false,gym7:false,gym8:false,beaten:{}}, data.flags||{});
+  data.visited = data.visited||{};
+  if(!data.lastHeal) data.lastHeal = { map:"town", x:3, y:3 };
+  if(!data.lastHunt) data.lastHunt = null;
   (data.party||[]).forEach(ensurePp);
   (data.box||[]).forEach(ensurePp);
   return data;
@@ -1890,6 +2157,7 @@ function refreshTitleBtns(){
 function enterWorld(){
   closeOverlay();
   resetWalk();
+  markVisited();
   showView("world");
   try{ fitCanvas(); drawWorld(); }
   catch(e){ toast("進入地圖失敗"); }
@@ -2187,9 +2455,68 @@ function drawWorld(){
       });
     }
   });
-  const badges = ["gym1","gym2","gym3","gym4"].filter(k=>S.flags[k]).length;
-  $("place").textContent = map.name + (badges?" · 徽章"+badges:"");
+  drawPlaceNames(ctx, map.tiles, camX, camY, ts);
+  const badges = badgeCount();
+  $("place").textContent = map.name + (badges?" · 徽章"+badges:"" ) + (AUTO.on?" · 自動":"") + (S.surf?" · 游泳":"");
   $("money").textContent = "◎ "+S.money;
+}
+function drawPlaceNames(g, rows, camX, camY, ts){
+  g.save();
+  g.font = "900 12px system-ui,-apple-system,'Noto Sans TC',sans-serif";
+  g.textAlign = "center";
+  g.textBaseline = "bottom";
+  for(let y=0;y<rows.length;y++){
+    for(let x=0;x<rows[y].length;x++){
+      const t = rows[y][x];
+      if(t!=="H" && t!=="S") continue;
+      if(x>0 && rows[y][x-1]===t) continue;
+      if(y>0 && rows[y-1][x]===t) continue;
+      let w = 1;
+      while(x+w<rows[y].length && rows[y][x+w]===t) w++;
+      const label = t==="H" ? "治療臺" : "商店";
+      const cx = (x + w/2)*ts - camX;
+      const cy = y*ts - camY - 3;
+      const tw = g.measureText(label).width + 14;
+      g.fillStyle = "rgba(10,16,28,.82)";
+      g.strokeStyle = "rgba(255,255,255,.18)";
+      g.lineWidth = 1;
+      const rx = cx-tw/2, ry = cy-16, rw = tw, rh = 18, r = 8;
+      g.beginPath();
+      g.moveTo(rx+r,ry); g.lineTo(rx+rw-r,ry); g.quadraticCurveTo(rx+rw,ry,rx+rw,ry+r);
+      g.lineTo(rx+rw,ry+rh-r); g.quadraticCurveTo(rx+rw,ry+rh,rx+rw-r,ry+rh);
+      g.lineTo(rx+r,ry+rh); g.quadraticCurveTo(rx,ry+rh,rx,ry+rh-r);
+      g.lineTo(rx,ry+r); g.quadraticCurveTo(rx,ry,rx+r,ry); g.closePath();
+      g.fill(); g.stroke();
+      g.fillStyle = t==="H" ? "#8ee6b0" : "#f0c14b";
+      g.fillText(label, cx, cy-1);
+    }
+  }
+  const marks = MAPS[S.map].marks || [];
+  marks.forEach(m=>{
+    const label = m.text;
+    const cx = (m.x+0.5)*ts - camX;
+    const cy = m.y*ts - camY - 2;
+    const tw = g.measureText(label).width + 14;
+    g.fillStyle = "rgba(10,16,28,.82)";
+    const rx = cx-tw/2, ry = cy-16, rw = tw, rh = 18, r = 8;
+    g.beginPath();
+    g.moveTo(rx+r,ry); g.lineTo(rx+rw-r,ry); g.quadraticCurveTo(rx+rw,ry,rx+rw,ry+r);
+    g.lineTo(rx+rw,ry+rh-r); g.quadraticCurveTo(rx+rw,ry+rh,rx+rw-r,ry+rh);
+    g.lineTo(rx+r,ry+rh); g.quadraticCurveTo(rx,ry+rh,rx,ry+rh-r);
+    g.lineTo(rx,ry+r); g.quadraticCurveTo(rx,ry,rx+r,ry); g.closePath();
+    g.fill();
+    g.fillStyle = "#f0c14b";
+    g.fillText(label, cx, cy-1);
+  });
+  if(/^gym/.test(S.map) || MAPS[S.map].name.indexOf("館")>=0){
+    const label = MAPS[S.map].name;
+    g.fillStyle = "rgba(10,16,28,.82)";
+    const tw = g.measureText(label).width + 16;
+    g.fillRect(cw/2-tw/2, 8, tw, 20);
+    g.fillStyle = "#f0c14b";
+    g.fillText(label, cw/2, 25);
+  }
+  g.restore();
 }
 
 function npcAt(x,y){ return (MAPS[S.map].npcs||[]).find(n=>n.x===x&&n.y===y); }
@@ -2209,6 +2536,8 @@ function tryMove(dx,dy){
     walk.bump = 90;
     return;
   }
+  if(t==="~") S.surf = true;
+  else S.surf = false;
   walk.active = true;
   walk.sx = S.x; walk.sy = S.y;
   walk.dx = dx; walk.dy = dy;
@@ -2224,11 +2553,16 @@ function finishStep(){
   const warp = MAPS[S.map].warps[t];
   if(warp){
     S.map = warp.map; S.x = warp.x; S.y = warp.y;
+    S.surf = tileAt(S.map,S.x,S.y)==="~";
+    markVisited();
     persist();
     return;
   }
   persist();
-  if(t==="g" && Math.random()<0.16){ startWild(); return; }
+  markVisited();
+  const enc = AUTO.on ? 0.42 : 0.16;
+  if(t==="g" && Math.random()<enc){ startWild(); return; }
+  if(t==="~" && Math.random()<(AUTO.on?0.28:0.12)){ startWild(true); return; }
   if(moveHold) tryMove(moveHold.dx, moveHold.dy);
 }
 function updateWalk(dt){
@@ -2241,7 +2575,8 @@ function updateWalk(dt){
     return;
   }
   if(!walk.active){
-    if(moveHold) tryMove(moveHold.dx, moveHold.dy);
+    if(AUTO.on && !busy) autoWander();
+    else if(moveHold) tryMove(moveHold.dx, moveHold.dy);
     return;
   }
   walk.t += dt;
@@ -2253,8 +2588,27 @@ function facingTile(){ return { x:S.x+dir.x, y:S.y+dir.y, ch:tileAt(S.map,S.x+di
 function interact(){
   if(busy || walk.active) return;
   const t = tileAt(S.map,S.x,S.y);
-  if(t==="H"){ healAll(); persist(); openDialog("治療臺",["傷勢與招式次數已完全恢復。"]); return; }
+  if(t==="H"){
+    healAll();
+    S.lastHeal = { map:S.map, x:S.x, y:S.y };
+    persist();
+    openDialog("治療臺",["傷勢與招式次數已完全恢復。"]);
+    return;
+  }
   if(t==="S"){ openShop(); return; }
+  const face = facingTile();
+  if(face.ch==="~" && canSurf() && !S.surf){
+    S.surf = true;
+    tryMove(dir.x, dir.y);
+    toast("下水了（游泳）");
+    return;
+  }
+  if(S.surf && face.ch!=="~" && face.ch!=="#" && walkable(face.ch)){
+    S.surf = false;
+    tryMove(dir.x, dir.y);
+    toast("上了岸");
+    return;
+  }
   const f = facingTile();
   const npc = npcAt(f.x,f.y);
   if(npc){
@@ -2294,7 +2648,7 @@ function openShop(){
     const rows = Object.keys(ITEMS).map(k=>{
       const it = ITEMS[k];
       return `<div class="row shop-row"><div class="l shop-info">
-        <div>${it.name} <span class="muted">◎${it.price}</span></div>
+        <div>${it.name} <span class="muted">◎${it.price}　持有 ×${S.bag[k]||0}</span></div>
         <span class="item-desc">${it.desc}</span>
         <span class="item-note">${it.note}</span>
       </div><button data-buy="${k}">買</button></div>`;
@@ -2326,6 +2680,7 @@ function openMenu(fromSub){
       <button class="listbtn" id="mDex">圖鑑</button>
       <button class="listbtn" id="mChart">屬性相剋</button>
       <button class="listbtn" id="mAtlas">地區圖</button>
+      <button class="listbtn" id="mAuto">自動尋怪　${autoLabel()}</button>
       <button class="listbtn" id="mSpd">戰鬥速度　${spdLabel()}</button>
       <button class="listbtn" id="mSave">存檔／備份</button>
       <button class="listbtn ghost" id="mTitle">回標題</button>
@@ -2338,6 +2693,7 @@ function openMenu(fromSub){
   $("mDex").onclick = openDex;
   $("mChart").onclick = openChart;
   $("mAtlas").onclick = openAtlas;
+  $("mAuto").onclick = openAutoMenu;
   $("mSpd").onclick = ()=>{ cycleSpeed(); openMenu(true); };
   $("mSave").onclick = openSave;
   $("mTitle").onclick = ()=>{ persist(); closeToWorld(); battle=null; showView("title"); refreshTitleBtns(); };
@@ -2381,14 +2737,17 @@ function monRow(m){
 function openParty(mode, onPick){
   const rows = S.party.map((m,i)=>`<button class="listbtn" data-i="${i}">${monRow(m)}</button>`).join("")
     || `<p class="muted">隊伍是空的</p>`;
-  const canBox = mode==="field" && S.box.length && S.party.length<6;
+  const canBox = mode==="field" && S.box.length;
   const actions = mode==="battle-must" ? "" :
     mode==="battle" ? `<button class="wide" id="pBack">返回戰鬥</button>` :
     `<button id="pBack">返回選單</button><button class="gold" id="pWorld">回到地圖</button>`;
+  const boxHint = S.party.length>=6
+    ? (S.box.length?"隊伍已滿 6 隻。多的在核倉，可進去交換。":"隊伍已滿 6 隻。再捕捉會自動送進核倉。")
+    : (S.box.length?`核倉 ${S.box.length} 隻，有空位可叫回。`:"核倉是空的。捕捉超過 6 隻會自動送進核倉。");
   openSheet(`<h2>隊伍 ${S.party.length}/6</h2>
     <div class="sheet-body">${rows}
-      ${S.box.length?`<p class="muted">核倉 ${S.box.length} 隻</p>`:""}
-      ${canBox?`<button class="listbtn" id="pBox">從核倉叫回</button>`:""}
+      <p class="muted">${boxHint}</p>
+      ${canBox?`<button class="listbtn" id="pBox">${S.party.length>=6?"打開核倉（交換）":"從核倉叫回"}</button>`:""}
     </div>
     <div class="sheet-actions">${actions}</div>`);
   sheet.querySelectorAll("[data-i]").forEach(b=>{
@@ -2408,23 +2767,54 @@ function openParty(mode, onPick){
   if(world) world.onclick = closeToWorld;
 }
 function openBox(){
-  const rows = S.box.map((m,i)=>`<button class="listbtn" data-b="${i}">${monRow(m)}</button>`).join("");
-  openSheet(`<h2>核倉</h2><div class="sheet-body"><p class="muted">點選叫回隊伍（需有空位）</p>${rows}</div>
+  const full = S.party.length>=6;
+  const rows = S.box.map((m,i)=>`<button class="listbtn" data-b="${i}">${monRow(m)}</button>`).join("")
+    || `<p class="muted">核倉是空的</p>`;
+  openSheet(`<h2>核倉 ${S.box.length}</h2>
+    <div class="sheet-body">
+      <p class="muted">${full?"隊伍已滿。點一隻要領出的核獸，再選隊伍裡要換下去的。":"點選叫回隊伍。"}</p>
+      ${rows}
+    </div>
     <div class="sheet-actions"><button class="wide" id="boxBack">返回隊伍</button></div>`);
   sheet.querySelectorAll("[data-b]").forEach(b=>{
     b.onclick = ()=>{
-      if(S.party.length>=6){ toast("隊伍已滿"); return; }
       const i = +b.getAttribute("data-b");
-      S.party.push(S.box.splice(i,1)[0]); persist(); openParty("field");
+      if(S.party.length<6){
+        S.party.push(S.box.splice(i,1)[0]); persist(); toast(monName(S.party[S.party.length-1])+" 加入隊伍"); openParty("field");
+      }else{
+        openSwapFromBox(i);
+      }
     };
   });
   $("boxBack").onclick = ()=> openParty("field");
+}
+function openSwapFromBox(boxIdx){
+  const incoming = S.box[boxIdx];
+  const rows = S.party.map((m,i)=>`<button class="listbtn" data-p="${i}">${monRow(m)}</button>`).join("");
+  openSheet(`<h2>與誰交換？</h2>
+    <div class="sheet-body">
+      <p class="muted">要把 ${monName(incoming)} 換進隊伍，點選要送回核倉的隊友。</p>
+      ${rows}
+    </div>
+    <div class="sheet-actions"><button class="wide" id="swBack">返回核倉</button></div>`);
+  sheet.querySelectorAll("[data-p]").forEach(b=>{
+    b.onclick = ()=>{
+      const pi = +b.getAttribute("data-p");
+      const out = S.party[pi];
+      S.party[pi] = S.box.splice(boxIdx,1)[0];
+      S.box.push(out);
+      persist();
+      toast(monName(out)+" 進入核倉，"+monName(S.party[pi])+" 加入隊伍");
+      openParty("field");
+    };
+  });
+  $("swBack").onclick = openBox;
 }
 
 function openSummary(i){
   const m = S.party[i];
   const sp = SPECIES[m.sid];
-  const mv = m.moves.map(id=>`<div class="row mv-row"><div class="l mv-info">
+  const mv = m.moves.map((id,mi)=>`<div class="row mv-row" data-mi="${mi}"><div class="l mv-info">
       <div>${typeBadge(MOVES[id].type)}${MOVES[id].name}</div>
       <span class="item-desc">${moveStatLine(MOVES[id])}</span>
       <span class="item-note">剩餘次數 ${ppLeft(m,id)}／${maxPp(id)}</span>
@@ -2437,7 +2827,8 @@ function openSummary(i){
       <p>Lv.${m.lv}　攻 ${statOf(m,"atk")}　防 ${statOf(m,"def")}　速 ${statOf(m,"spd")}</p>
       <div style="margin:8px auto;max-width:220px">${hpBarHtml(m)}</div>
       <p class="muted">經驗 ${m.lv>=50?"已滿":m.exp+" / "+expToNext(m.lv)}</p>
-      <div class="bar exp" style="margin:6px auto 10px;max-width:220px"><i style="width:${expPct(m)}%"></i></div>${evo}${mv}
+      <div class="bar exp" style="margin:6px auto 10px;max-width:220px"><i style="width:${expPct(m)}%"></i></div>${evo}
+      <p class="muted" style="margin:0 0 8px">長按招式，再點另一招可換位置（最多四招）</p>${mv}
       <div class="grid2">
         <button id="sumUp"${i===0?" disabled":""}>上移</button>
         <button id="sumBox"${S.party.length<=1?" disabled":""}>送入核倉</button>
@@ -2456,6 +2847,24 @@ function openSummary(i){
     if(S.party.length<=1){ toast("至少留一隻"); return; }
     S.box.push(S.party.splice(i,1)[0]); persist(); openParty("field");
   };
+  let swapFrom = null;
+  sheet.querySelectorAll("[data-mi]").forEach(el=>{
+    const mi = +el.getAttribute("data-mi");
+    bindHold(el,
+      ()=>{
+        if(swapFrom==null) return;
+        if(swapFrom===mi){ swapFrom=null; el.classList.remove("pick"); toast("取消更換"); return; }
+        swapMoves(m, swapFrom, mi);
+        toast("已交換招式位置");
+        openSummary(i);
+      },
+      ()=>{
+        swapFrom = mi;
+        sheet.querySelectorAll("[data-mi]").forEach(n=>n.classList.toggle("pick", +n.getAttribute("data-mi")===mi));
+        toast("再點另一招交換位置");
+      }
+    );
+  });
   $("sumBack").onclick = ()=> openParty("field");
   $("sumWorld").onclick = closeToWorld;
 }
@@ -2510,27 +2919,172 @@ function useItem(key, mode){
   });
 }
 
+function autoLabel(){
+  if(!AUTO.on) return "關閉";
+  return AUTO.mode==="catch" ? "尋怪+稀有捕捉" : "尋怪治療";
+}
+function openAutoMenu(){
+  const pick = defaultHunt();
+  const chosen = (AUTO.pick && canHunt(AUTO.pick)) ? AUTO.pick : pick.map;
+  const choices = huntChoices();
+  const rows = choices.map(id=>{
+    const sel = chosen===id;
+    return `<button class="listbtn${sel?"":" ghost"}" data-h="${id}">${MAPS[id].name}${sel?"　（掛機點）":""}</button>`;
+  }).join("");
+  openSheet(`<h2>自動尋怪</h2>
+    <div class="sheet-body">
+      <p class="muted" style="line-height:1.7;margin-bottom:10px">只在有草叢的地圖走動，不進館、不進城鎮。低血或全滅會立刻治療，再回到掛機點。</p>
+      <p class="muted" style="margin-bottom:8px">掛機點：<b>${MAPS[chosen]?MAPS[chosen].name:huntName(pick)}</b>${canHunt(S.map)?"（可改成你現在站的草地）":""}</p>
+      ${rows || `<p class="muted">還沒走過草地。開始後會先去翠葉道。</p>`}
+      <button class="listbtn" id="auFarm">1. 自動尋怪打怪${AUTO.on&&AUTO.mode==="farm"?"　（進行中）":""}</button>
+      <button class="listbtn" id="auCatch">2. 自動尋怪，遇稀有自動捕捉${AUTO.on&&AUTO.mode==="catch"?"　（進行中）":""}</button>
+      <button class="listbtn ghost" id="auOff">關閉自動</button>
+    </div>
+    <div class="sheet-actions"><button class="gold wide" id="auBack">返回選單</button></div>`);
+  sheet.querySelectorAll("[data-h]").forEach(b=>{
+    b.onclick = ()=>{
+      AUTO.pick = b.getAttribute("data-h");
+      toast("掛機點改為 "+MAPS[AUTO.pick].name);
+      openAutoMenu();
+    };
+  });
+  $("auFarm").onclick = ()=>{ startAuto("farm", chosen); closeToWorld(); };
+  $("auCatch").onclick = ()=>{ startAuto("catch", chosen); closeToWorld(); };
+  $("auOff").onclick = ()=>{ AUTO.on=false; AUTO.mode=null; toast("已關閉自動"); openMenu(true); };
+  $("auBack").onclick = ()=> openMenu(true);
+}
+function startAuto(mode, mapId){
+  AUTO.on = true; AUTO.mode = mode;
+  const dest = (mapId && canHunt(mapId)) ? huntSpot(mapId) : defaultHunt();
+  if(S && dest.map===S.map && tileAt(S.map,S.x,S.y)==="g"){
+    dest.x = S.x; dest.y = S.y;
+  }
+  AUTO.hunt = dest;
+  AUTO.pick = dest.map;
+  S.lastHunt = dest;
+  if(S.map!==dest.map || S.x!==dest.x || S.y!==dest.y){
+    S.map = dest.map; S.x = dest.x; S.y = dest.y;
+  }
+  persist();
+  toast((mode==="catch"?"自動尋怪＋稀有捕捉：":"自動尋怪：")+MAPS[dest.map].name);
+}
+function autoHealResume(){
+  healAll();
+  const dest = AUTO.hunt || S.lastHunt || defaultHunt();
+  AUTO.hunt = dest;
+  S.lastHunt = dest;
+  S.map = dest.map; S.x = dest.x; S.y = dest.y;
+  persist();
+  toast("已治療，回到"+(MAPS[dest.map]?MAPS[dest.map].name:"草地")+"繼續");
+}
+function autoWander(){
+  if(!S || busy || battle || walk.active) return;
+  if(partyNeedHeal()){ autoHealResume(); return; }
+  const dest = AUTO.hunt || S.lastHunt || defaultHunt();
+  if(!canHunt(S.map) || S.map!==dest.map){
+    AUTO.hunt = dest;
+    S.map = dest.map; S.x = dest.x; S.y = dest.y;
+    return;
+  }
+  const map = MAPS[S.map];
+  if(!map.grass){
+    S.map = dest.map; S.x = dest.x; S.y = dest.y;
+    return;
+  }
+  const grass = [];
+  map.tiles.forEach((row,y)=>{
+    for(let x=0;x<row.length;x++) if(row[x]==="g") grass.push({x,y});
+  });
+  let dx=0, dy=0;
+  if(grass.length){
+    const t = grass[(worldT/400|0)%grass.length];
+    if(t.x>S.x) dx=1; else if(t.x<S.x) dx=-1;
+    else if(t.y>S.y) dy=1; else if(t.y<S.y) dy=-1;
+  }else{
+    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    const d = dirs[(worldT/300|0)%4];
+    dx=d[0]; dy=d[1];
+  }
+  if(dx||dy) tryMove(dx,dy);
+}
+function queueAutoBattle(){
+  if(!AUTO.on || !battle) return;
+  setTimeout(()=>{
+    if(!AUTO.on || !battle || battle.lock) return;
+    autoBattleAct();
+  }, 260);
+}
+function autoBattleAct(){
+  if(!battle || battle.lock) return;
+  if(AUTO.mode==="catch" && battle.kind==="wild" && battle.rare){
+    const ball = (S.bag.great>0) ? "great" : (S.bag.ball>0) ? "ball" : null;
+    if(ball){ useItem(ball, "battle"); return; }
+  }
+  const you = S.party[battle.pi];
+  ensurePp(you);
+  const usable = you.moves.filter(id=>ppLeft(you,id)>0);
+  const id = usable.length ? usable.sort((a,b)=>(MOVES[b].pow||0)-(MOVES[a].pow||0))[0] : "struggle";
+  playerAct({type:"move", id});
+}
+
 function openAtlas(){
-  const here = S ? MAPS[S.map].name : "";
-  const rows = [
-    ["暉光鎮","起點。南翠葉、東海岸、北暗影林"],
-    ["翠葉道","通往燼炎館、碎岩徑、核廠"],
-    ["燼炎館","第一館 · 火"],
-    ["碎岩徑","東霜霧谷、南霧冠館"],
-    ["霜霧谷／霧冠館","冰與靈 · 第四館"],
-    ["廢棄核廠 → 鋼脊市／鋼之館","機械 · 第三館"],
-    ["潮聲岸 → 潮音港／浪之館","水 · 第二館"],
-    ["珊瑚洞","深海稀有核獸"],
-    ["暗影林 → 靈祠 → 星落村／峰","暗、蟲、星核與龍"],
-    ["珊瑚洞／星落峰","稀有：天蛟、燼天蛟、星漂"]
-  ].map(([n,d])=>`<div class="row"><div class="l">${n===here?"➤ ":""}${n}<br><span class="muted">${d}</span></div></div>`).join("");
-  const b = S ? ["gym1","gym2","gym3","gym4"].filter(k=>S.flags[k]).length : 0;
+  const nodes = [
+    {id:"town",x:38,y:48,k:"town"},
+    {id:"route1",x:38,y:64,k:"route"},
+    {id:"gym",x:38,y:80,k:"gym",g:"gym1"},
+    {id:"factory",x:18,y:64,k:"route"},
+    {id:"steel",x:10,y:48,k:"town"},
+    {id:"gym3",x:10,y:32,k:"gym",g:"gym3"},
+    {id:"mesa",x:10,y:16,k:"route"},
+    {id:"gym6",x:10,y:4,k:"gym",g:"gym6"},
+    {id:"quarry",x:58,y:64,k:"route"},
+    {id:"frost",x:74,y:64,k:"route"},
+    {id:"gym4",x:74,y:80,k:"gym",g:"gym4"},
+    {id:"coast",x:58,y:48,k:"route"},
+    {id:"port",x:74,y:48,k:"town"},
+    {id:"gym2",x:90,y:48,k:"gym",g:"gym2"},
+    {id:"cave",x:74,y:32,k:"route"},
+    {id:"forest",x:38,y:32,k:"route"},
+    {id:"grove",x:22,y:20,k:"route"},
+    {id:"gym5",x:22,y:8,k:"gym",g:"gym5"},
+    {id:"shrine",x:54,y:20,k:"route"},
+    {id:"duskroad",x:70,y:12,k:"route"},
+    {id:"gym7",x:86,y:12,k:"gym",g:"gym7"},
+    {id:"star",x:54,y:8,k:"town"},
+    {id:"peak",x:70,y:4,k:"route"},
+    {id:"dragongate",x:86,y:28,k:"route"},
+    {id:"gym8",x:90,y:16,k:"gym",g:"gym8"}
+  ];
+  const flyOk = canFly();
+  const html = nodes.map(n=>{
+    const m = MAPS[n.id]; if(!m) return "";
+    const here = S && S.map===n.id;
+    const seen = S && S.visited && S.visited[n.id];
+    const gymOk = n.g && S && S.flags[n.g];
+    const canGo = flyOk && seen && m.fly;
+    const sub = n.k==="gym" ? (gymOk?"已取得徽章":"道館") : (m.fly?"城鎮":"道路");
+    return `<button type="button" class="anode ${n.k}${here?" here":""}${canGo?" fly":""}" data-id="${n.id}"
+      style="left:${n.x}%;top:${n.y}%">${m.name}<small>${sub}${here?" · 你在這":""}</small></button>`;
+  }).join("");
   openSheet(`<h2>暉光地方</h2>
-    <div class="sheet-body"><p class="muted">徽章 ${b}/4</p>${rows}</div>
+    <div class="sheet-body">
+      <p class="muted">徽章 ${badgeCount()}/8　${flyOk?"已解鎖飛天：點已去過的城鎮可飛行。":"飛天：取得雷翼徽章，且隊伍有龍系或會翼斬。"}<br>
+      游泳：取得潮浪徽章，隊伍有水系，在水邊按確認。</p>
+      <div class="atlas"><div class="atlas-in">${html}</div></div>
+    </div>
     <div class="sheet-actions">
       <button id="atBack">返回選單</button>
       <button class="gold" id="atWorld">回到地圖</button>
     </div>`);
+  sheet.querySelectorAll(".anode").forEach(b=>{
+    b.onclick = ()=>{
+      const id = b.getAttribute("data-id");
+      const m = MAPS[id];
+      if(!(canFly() && S.visited && S.visited[id] && m.fly)) return;
+      S.map = id; S.x = 4; S.y = 3; S.surf=false;
+      persist(); closeToWorld(); toast("飛到了"+m.name);
+    };
+  });
   $("atBack").onclick = ()=> openMenu(true);
   $("atWorld").onclick = closeToWorld;
 }
@@ -2619,7 +3173,10 @@ function openHelp(){
     GitHub 網址請開資料夾網址，或直接開 <b>Replica Pokemon.html</b>。<br><br>
     <b>存檔</b>：進度存在這個瀏覽器裡。無痕、清快取、換瀏覽器、LINE／微信內建瀏覽器可能丟失。<br><br>
     操作：方向鍵移動，確認交談／治療／商店，草叢會遇敵。<br>
-    招式有次數限制，面板會顯示威力、命中與剩餘次數。治療臺會補滿 HP 與次數。<br><br>
+    招式最多四招。長按可換位置；第五招會詢問要換哪一招。<br>
+    <b>游泳</b>：取得潮浪徽章，隊伍有水系，在水邊按確認下水。<br>
+    <b>飛天</b>：取得雷翼徽章，隊伍有龍系或會翼斬，地區圖點已去過的城鎮。<br>
+    隊伍最多帶 6 隻，多的進核倉，可叫回或滿員交換。選單可開自動尋怪：先選走過的草地，低血立刻治療再回掛機點；第二模式遇稀有自動捕捉。<br><br>
     戰鬥右上角可切 1×／2×／3× 速度。選單有屬性相剋表。<br>
     遇到稀有種時，名稱旁會出現金色「稀有」標籤。<br><br>
     「新的旅程」選好最初核獸後才會覆蓋舊存檔；覆蓋前會另存一份，標題可按「恢復上一份存檔」。重要進度也可用選單匯出備份碼。
@@ -2742,6 +3299,7 @@ function spawnMoveFx(id, a, b){
       addFx({x:b.x,y:b.y,vx:0,vy:0,r:12,c:"#ffd36a",life:1,max:360,shape:"ring"});
       break;
     case "inferno":
+    case "solflare":
       for(let i=0;i<7;i++) addFx({x:b.x-30+i*10,y:b.y+20,vx:0,vy:-2.8-Math.random(),r:7,c:pick(cols),life:1,max:480,shape:"flame",g:-0.05});
       burst(b.x,b.y,cols,36,4.2);
       addFx({x:b.x,y:b.y,vx:0,vy:0,r:16,c:"#ff3d00",life:1,max:420,shape:"ring"});
@@ -2752,6 +3310,7 @@ function spawnMoveFx(id, a, b){
       burst(b.x,b.y,cols,10,2.2);
       break;
     case "surge":
+    case "abyssmaw":
       for(let i=0;i<8;i++) addFx({x:a.x+(b.x-a.x)*i/8,y:a.y+8,vx:1.2,vy:-0.8,r:6,c:pick(cols),life:1,max:360,shape:"dot",g:0.08});
       burst(b.x,b.y,cols,20,3.2);
       addFx({x:b.x,y:b.y,vx:0,vy:0,r:14,c:"#4fc3f7",life:1,max:340,shape:"ring"});
@@ -2812,6 +3371,7 @@ function spawnMoveFx(id, a, b){
       burst(b.x,b.y,cols,18,3.2);
       break;
     case "cannon":
+    case "corecannon":
       addFx({x:a.x,y:a.y,vx:(b.x-a.x)/10,vy:(b.y-a.y)/10,r:7,c:"#ff8a65",life:1,max:280,shape:"dot"});
       burst(b.x,b.y,["#ff8a65","#fff","#90a4ae"],28,4);
       addFx({x:b.x,y:b.y,vx:0,vy:0,r:18,c:"#ff8a65",life:1,max:380,shape:"ring"});
@@ -3053,7 +3613,12 @@ function renderBattle(){
 function battleBtns(list){
   $("bcmd").innerHTML = list.map((x,i)=>`<button data-b="${i}" class="${x.cls||""}" ${x.dis?"disabled":""}>${x.t}</button>`).join("");
   $("bcmd").querySelectorAll("button").forEach(b=>{
-    b.onclick = ()=> list[+b.getAttribute("data-b")].fn();
+    const item = list[+b.getAttribute("data-b")];
+    if(item.hold){
+      bindHold(b, ()=>{ if(!b.disabled) item.fn(); }, ()=> item.hold());
+    }else{
+      b.onclick = ()=> item.fn();
+    }
   });
 }
 
@@ -3074,9 +3639,11 @@ function pickWild(table){
   }
   return table[table.length-1];
 }
-function startWild(){
-  const table = MAPS[S.map].grass;
+const WATER_FALLBACK = [["droplet",8,14,2],["tidecrab",8,14,2],["coilray",10,16,1],["ripplefin",8,14,2],["kelpmaid",10,16,1],["abyssfin",14,18,0.7]];
+function startWild(onWater){
+  const table = onWater ? (MAPS[S.map].water || WATER_FALLBACK) : MAPS[S.map].grass;
   if(!table || firstAlive()<0) return;
+  if(AUTO.on) AUTO.hunt = { map:S.map, x:S.x, y:S.y };
   const row = pickWild(table);
   const sid = row[0], lo = row[1], hi = row[2], weight = row[3];
   const lv = lo + Math.floor(Math.random()*(hi-lo+1));
@@ -3125,21 +3692,35 @@ function battleCmd(){
     {t:"道具", fn:()=>{ busy=true; openBag("battle"); }},
     {t: battle.kind==="wild"?"逃跑":"不能逃", fn:()=> tryRun(), dis:battle.kind!=="wild"}
   ]);
+  queueAutoBattle();
 }
 
 function moveMenu(){
   const you = S.party[battle.pi];
   ensurePp(you);
-  const rows = you.moves.map(id=>{
+  let swapFrom = null;
+  const rows = you.moves.map((id,mi)=>{
     const mv = MOVES[id];
     const left = ppLeft(you, id);
     const empty = left<=0;
     return {
-      cls:"mv",
-      dis: empty,
+      cls:"mv"+(empty?" dim":""),
       t: `<span class="mv-top"><span class="mv-l">${typeBadge(mv.type)}${mv.name}</span><span class="mv-pp${empty?" out":""}">${left}/${maxPp(id)}</span></span>
         <span class="mv-sub">${moveStatLine(mv)}</span>`,
-      fn:()=> playerAct({type:"move", id})
+      fn:()=>{
+        if(swapFrom!=null){
+          if(swapFrom!==mi){ swapMoves(you, swapFrom, mi); toast("已交換招式位置"); }
+          moveMenu();
+          return;
+        }
+        if(empty){ toast("次數用盡"); return; }
+        playerAct({type:"move", id});
+      },
+      hold:()=>{
+        swapFrom = mi;
+        $("bcmd").querySelectorAll("button.mv").forEach((btn,idx)=> btn.classList.toggle("pick", idx===mi));
+        toast("再點另一招交換位置");
+      }
     };
   });
   if(!hasMovePp(you)){
@@ -3155,6 +3736,16 @@ function moveMenu(){
 }
 
 function switchMenu(must){
+  if(AUTO.on && must){
+    const idx = S.party.findIndex((m,i)=> i!==battle.pi && !isFaint(m));
+    if(idx>=0){
+      battle.pi = idx;
+      bat.p.enter = 0; bat.p.sink = 0; bat.p.a = 1;
+      paintHud();
+      tween(200, p => { bat.p.enter = p; }).then(()=>{ if(battle) battleCmd(); });
+      return;
+    }
+  }
   busy = true;
   openParty(must?"battle-must":"battle", idx=>{
     if(idx===battle.pi){ toast("已經在場上"); return; }
@@ -3361,8 +3952,9 @@ async function gainExp(foe){
       const old = maxHp(you);
       you.lv++;
       you.hp += maxHp(you)-old;
-      SPECIES[you.sid].learn.filter(x=>x[0]===you.lv).forEach(x=> learnMove(you, x[1]));
       blog(`${monName(you)} 升到 Lv.${you.lv}！`);
+      const news = SPECIES[you.sid].learn.filter(x=>x[0]===you.lv).map(x=>x[1]);
+      for(const nid of news) await offerLearn(you, nid);
       const el = $("pExp");
       if(el){ el.style.transition="none"; el.style.width="100%"; }
       await wait(140);
@@ -3429,7 +4021,7 @@ async function winBattle(){
       const flag = battle.gym === true ? "gym1" : battle.gym;
       S.flags[flag] = true;
       S.bag.great = (S.bag.great||0)+3;
-      const badge = {gym1:"燼炎徽章", gym2:"潮浪徽章", gym3:"鋼脊徽章", gym4:"霜霧徽章"}[flag]||"徽章";
+      const badge = (GYMS[flag]&&GYMS[flag].badge)||"徽章";
       blog("擊敗"+battle.trainerName+"！獲得"+badge+"與 3 顆高級核。");
       await wait(850);
     }
@@ -3442,6 +4034,13 @@ async function loseBattle(){
   const lose = Math.floor(S.money*0.15);
   S.money = Math.max(0, S.money-lose);
   healAll();
+  if(AUTO.on){
+    const dest = AUTO.hunt || {map:"route1",x:4,y:4};
+    S.map = dest.map; S.x = dest.x; S.y = dest.y;
+    persist();
+    endBattle("全滅，已治療並繼續自動尋怪。");
+    return;
+  }
   S.map="town"; S.x=3; S.y=2;
   persist();
   endBattle("隊伍全滅……醒來時已在暉光鎮治療臺。");
