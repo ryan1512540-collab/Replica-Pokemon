@@ -189,9 +189,18 @@
     radial-gradient(circle at 30% 40%,#1a3040,#0c141c 70%);border-radius:14px;
     overflow:auto;border:1px solid var(--line)}
   .atlas-in{position:relative;width:520px;height:420px;margin:0 auto}
+  .atlas-lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+  .atlas-lines path{fill:none;stroke:#5a6e82;stroke-width:2;vector-effect:non-scaling-stroke;
+    stroke-linecap:round;stroke-linejoin:round;opacity:.55}
+  .atlas-lines path.seen{stroke:#c4a574;opacity:.8}
+  .atlas-lines path.here{stroke:#f0c14b;opacity:1;stroke-width:2.6}
+  .atlas-compass{position:absolute;right:8px;top:8px;z-index:2;width:36px;height:36px;
+    border-radius:50%;border:1px solid var(--line);background:rgba(16,26,40,.82);
+    color:var(--gold);font-size:9px;font-weight:900;display:grid;place-items:center;
+    line-height:1.05;text-align:center;pointer-events:none}
   .anode{position:absolute;transform:translate(-50%,-50%);min-width:54px;padding:4px 6px;
     border-radius:8px;border:1px solid var(--line);background:#1a2740;font-size:10px;
-    font-weight:800;text-align:center;line-height:1.25;cursor:default}
+    font-weight:800;text-align:center;line-height:1.25;cursor:default;z-index:1}
   .anode.town{background:#2a3d28}
   .anode.gym{background:#3d2a18;color:var(--gold)}
   .anode.here{box-shadow:0 0 0 2px var(--gold)}
@@ -2399,12 +2408,34 @@ function defaultHunt(){
   if(visited.length) return huntSpot(visited[visited.length-1]);
   return huntSpot("route1");
 }
+function huntLevelRange(mapId){
+  const g = (MAPS[mapId] && MAPS[mapId].grass) || [];
+  if(!g.length) return null;
+  let lo = 99, hi = 0;
+  g.forEach(r=>{
+    lo = Math.min(lo, r[1]);
+    hi = Math.max(hi, r[2]);
+  });
+  return {lo, hi};
+}
+function huntRangeText(mapId){
+  const r = huntLevelRange(mapId);
+  return r ? `Lv.${r.lo}–${r.hi}` : "";
+}
 function huntChoices(){
-  return Object.keys(MAPS).filter(id => canHunt(id) && S.visited && S.visited[id]);
+  return Object.keys(MAPS).filter(id => canHunt(id) && S.visited && S.visited[id])
+    .sort((a,b)=>{
+      const ra = huntLevelRange(a), rb = huntLevelRange(b);
+      const la = ra ? ra.lo : 0, lb = rb ? rb.lo : 0;
+      if(la!==lb) return la-lb;
+      return (ra?ra.hi:0)-(rb?rb.hi:0);
+    });
 }
 function huntName(h){
   if(!h) return "尚未指定";
-  return (MAPS[h.map] && MAPS[h.map].name) || h.map;
+  const nm = (MAPS[h.map] && MAPS[h.map].name) || h.map;
+  const rg = huntRangeText(h.map);
+  return rg ? nm+"　"+rg : nm;
 }
 
 let S = null;
@@ -3011,6 +3042,7 @@ function openMenu(fromSub){
   openSheet(`<h2>選單</h2>
     <div class="sheet-body">
       <button class="listbtn" id="mParty">核獸隊伍${pendingCount()?`　（待學 ${pendingCount()}）`:""}</button>
+      <button class="listbtn" id="mBox">核倉${S.box.length?`　${S.box.length} 隻`:"　（空）"}</button>
       <button class="listbtn" id="mBag">背包</button>
       <button class="listbtn" id="mDex">圖鑑</button>
       <button class="listbtn" id="mChart">屬性相剋</button>
@@ -3024,6 +3056,7 @@ function openMenu(fromSub){
       <button class="gold wide" id="mClose">回到地圖</button>
     </div>`);
   $("mParty").onclick = ()=> openParty("field");
+  $("mBox").onclick = ()=> openBox();
   $("mBag").onclick = ()=> openBag("field");
   $("mDex").onclick = openDex;
   $("mChart").onclick = openChart;
@@ -3072,19 +3105,19 @@ function monRow(m){
 function openParty(mode, onPick){
   const rows = S.party.map((m,i)=>`<button class="listbtn" data-i="${i}">${monRow(m)}</button>`).join("")
     || `<p class="muted">隊伍是空的</p>`;
-  const canBox = mode==="field" && S.box.length;
   const actions = mode==="battle-must" ? "" :
     mode==="battle" ? `<button class="wide" id="pBack">返回戰鬥</button>` :
     `<button id="pBack">返回選單</button><button class="gold" id="pWorld">回到地圖</button>`;
   const boxHint = S.party.length>=6
-    ? (S.box.length?"隊伍已滿 6 隻。多的在核倉，可進去交換。":"隊伍已滿 6 隻。再捕捉會自動送進核倉。")
-    : (S.box.length?`核倉 ${S.box.length} 隻，有空位可叫回。`:"核倉是空的。捕捉超過 6 隻會自動送進核倉。");
+    ? (S.box.length?"隊伍已滿 6 隻。多的在核倉，可進去交換或批次放生。":"隊伍已滿 6 隻。再捕捉會自動送進核倉。")
+    : (S.box.length?`核倉 ${S.box.length} 隻，可叫回或批次放生。`:"核倉是空的。捕捉超過 6 隻會自動送進核倉。選單也可開核倉。");
   const pendBtn = mode==="field" && pendingCount() ? `<button class="listbtn" id="pPend">處理保留招式（${pendingCount()}）</button>` : "";
+  const boxBtn = mode==="field" ? `<button class="listbtn" id="pBox">打開核倉${S.box.length?`　${S.box.length} 隻`:""}</button>` : "";
   openSheet(`<h2>隊伍 ${S.party.length}/6</h2>
     <div class="sheet-body">${rows}
       <p class="muted">${boxHint}</p>
       ${pendBtn}
-      ${canBox?`<button class="listbtn" id="pBox">${S.party.length>=6?"打開核倉（交換）":"從核倉叫回"}</button>`:""}
+      ${boxBtn}
     </div>
     <div class="sheet-actions">${actions}</div>`);
   sheet.querySelectorAll("[data-i]").forEach(b=>{
@@ -3094,7 +3127,8 @@ function openParty(mode, onPick){
       else openSummary(i, mode);
     };
   });
-  if(canBox) $("pBox").onclick = openBox;
+  const boxEl = $("pBox");
+  if(boxEl) boxEl.onclick = ()=> openBox();
   const pend = $("pPend");
   if(pend) pend.onclick = ()=> openPendingReview(()=>openParty("field"));
   const back = $("pBack");
@@ -3105,19 +3139,57 @@ function openParty(mode, onPick){
   const world = $("pWorld");
   if(world) world.onclick = closeToWorld;
 }
-function openBox(){
+function boxDupSet(){
+  const best = {};
+  S.box.forEach((m,i)=>{
+    if(best[m.sid]==null || m.lv>S.box[best[m.sid]].lv) best[m.sid]=i;
+  });
+  const keep = new Set(Object.values(best));
+  const selected = {};
+  S.box.forEach((m,i)=>{
+    if(!keep.has(i) && S.box.filter(x=>x.sid===m.sid).length>1) selected[i]=true;
+  });
+  return selected;
+}
+function openBox(opts){
+  opts = opts || {};
+  const release = !!opts.release;
+  const selected = opts.selected || {};
+  const nSel = Object.keys(selected).filter(k=>selected[k]).length;
   const full = S.party.length>=6;
-  const rows = S.box.map((m,i)=>`<button class="listbtn" data-b="${i}">${monRow(m)}</button>`).join("")
-    || `<p class="muted">核倉是空的</p>`;
-  openSheet(`<h2>核倉 ${S.box.length}</h2>
+  const rows = S.box.map((m,i)=>`<button class="listbtn${release&&selected[i]?" pick":""}" data-b="${i}">${monRow(m)}</button>`).join("")
+    || `<p class="muted">核倉是空的。隊伍超過 6 隻時，多的會自動送進來。</p>`;
+  const hint = !S.box.length
+    ? "捕捉或隊伍送入後會出現在這裡。"
+    : release
+      ? "點選要放生的核獸（可多選）。放生後無法復原。"
+      : (full?"隊伍已滿。點一隻要領出的核獸，再選隊伍裡要換下去的。也可批次放生。":"點選叫回隊伍。也可批次放生。");
+  const extra = S.box.length ? (release
+    ? `<button class="listbtn" id="boxAll">全選</button>
+       <button class="listbtn" id="boxDups">只選重複種（留最高等）</button>
+       <button class="listbtn" id="boxClear">取消選取</button>
+       <button class="listbtn" id="boxDo"${nSel?"":" disabled"}>放生選取（${nSel}）</button>
+       <button class="listbtn ghost" id="boxCancelRel">結束放生</button>`
+    : `<button class="listbtn ghost" id="boxRel">批次放生</button>`) : "";
+  openSheet(`<h2>核倉 ${S.box.length}${release?"　放生":""}</h2>
     <div class="sheet-body">
-      <p class="muted">${full?"隊伍已滿。點一隻要領出的核獸，再選隊伍裡要換下去的。":"點選叫回隊伍。"}</p>
+      <p class="muted">${hint}</p>
       ${rows}
+      ${extra}
     </div>
-    <div class="sheet-actions"><button class="wide" id="boxBack">返回隊伍</button></div>`);
+    <div class="sheet-actions">
+      <button id="boxBack">返回隊伍</button>
+      <button class="gold" id="boxMenu">返回選單</button>
+    </div>`);
   sheet.querySelectorAll("[data-b]").forEach(b=>{
     b.onclick = ()=>{
       const i = +b.getAttribute("data-b");
+      if(release){
+        if(selected[i]) delete selected[i];
+        else selected[i] = true;
+        openBox({release:true, selected});
+        return;
+      }
       if(S.party.length<6){
         S.party.push(S.box.splice(i,1)[0]); persist(); toast(monName(S.party[S.party.length-1])+" 加入隊伍"); openParty("field");
       }else{
@@ -3125,7 +3197,46 @@ function openBox(){
       }
     };
   });
+  const rel = $("boxRel");
+  if(rel) rel.onclick = ()=> openBox({release:true, selected:{}});
+  const cancel = $("boxCancelRel");
+  if(cancel) cancel.onclick = ()=> openBox();
+  const all = $("boxAll");
+  if(all) all.onclick = ()=>{
+    const sel = {};
+    S.box.forEach((_,i)=>{ sel[i]=true; });
+    openBox({release:true, selected:sel});
+  };
+  const dups = $("boxDups");
+  if(dups) dups.onclick = ()=> openBox({release:true, selected:boxDupSet()});
+  const clr = $("boxClear");
+  if(clr) clr.onclick = ()=> openBox({release:true, selected:{}});
+  const doit = $("boxDo");
+  if(doit) doit.onclick = ()=> confirmBoxRelease(selected);
   $("boxBack").onclick = ()=> openParty("field");
+  $("boxMenu").onclick = ()=> openMenu(true);
+}
+function confirmBoxRelease(selected){
+  const idxs = Object.keys(selected).filter(k=>selected[k]).map(Number).sort((a,b)=>a-b);
+  if(!idxs.length){ toast("還沒選要放生的核獸"); return; }
+  const names = idxs.map(i=>`${monName(S.box[i])} Lv.${S.box[i].lv}`);
+  const preview = names.slice(0,8).join("、") + (names.length>8?` 等 ${names.length} 隻`:"");
+  openSheet(`<h2>確定放生？</h2>
+    <div class="sheet-body">
+      <p style="line-height:1.7">將放生 <b>${idxs.length}</b> 隻核獸，無法復原。</p>
+      <p class="muted" style="line-height:1.6">${preview}</p>
+    </div>
+    <div class="sheet-actions">
+      <button id="relNo">取消</button>
+      <button class="gold" id="relYes">確定放生</button>
+    </div>`);
+  $("relNo").onclick = ()=> openBox({release:true, selected});
+  $("relYes").onclick = ()=>{
+    idxs.slice().sort((a,b)=>b-a).forEach(i=> S.box.splice(i,1));
+    persist();
+    toast("已放生 "+idxs.length+" 隻");
+    openBox();
+  };
 }
 function openSwapFromBox(boxIdx){
   const incoming = S.box[boxIdx];
@@ -3272,12 +3383,12 @@ function openAutoMenu(){
   const choices = huntChoices();
   const rows = choices.map(id=>{
     const sel = chosen===id;
-    return `<button class="listbtn${sel?"":" ghost"}" data-h="${id}">${MAPS[id].name}${sel?"　（掛機點）":""}</button>`;
+    return `<button class="listbtn${sel?"":" ghost"}" data-h="${id}">${MAPS[id].name}　<span class="muted">${huntRangeText(id)}</span>${sel?"　（掛機點）":""}</button>`;
   }).join("");
   openSheet(`<h2>自動尋怪</h2>
     <div class="sheet-body">
       <p class="muted" style="line-height:1.7;margin-bottom:10px">只在有草叢的地圖走動，不進館、不進城鎮。戰鬥優先出屬性克制與本系攻擊，不浪費回合吼叫；沒有克制會換有克制的隊友。克制招次數用盡會去治療補次數。低血或全滅會立刻治療，再回到掛機點。第二模式遇稀有會先壓血（絕不打死）再連續捕捉，自身低血會依缺口喝傷藥或好傷藥，直到抓到。掛機學會更好的攻擊招會自動換掉撞擊。觸碰螢幕就會停止自動。</p>
-      <p class="muted" style="margin-bottom:8px">掛機點：<b>${MAPS[chosen]?MAPS[chosen].name:huntName(pick)}</b>${canHunt(S.map)?"（可改成你現在站的草地）":""}</p>
+      <p class="muted" style="margin-bottom:8px">掛機點：<b>${MAPS[chosen]?MAPS[chosen].name+"　"+huntRangeText(chosen):huntName(pick)}</b>${canHunt(S.map)?"（可改成你現在站的草地）":""}</p>
       ${rows || `<p class="muted">還沒走過草地。開始後會先去翠葉道。</p>`}
       <button class="listbtn" id="auFarm">1. 自動尋怪打怪${AUTO.on&&AUTO.mode==="farm"?"　（進行中）":""}</button>
       <button class="listbtn" id="auCatch">2. 自動尋怪，遇稀有壓血捕捉${AUTO.on&&AUTO.mode==="catch"?"　（進行中）":""}</button>
@@ -3405,7 +3516,7 @@ function startAuto(mode, mapId){
   }
   persist();
   AUTO.touchLock = performance.now() + 600;
-  toast((mode==="catch"?"自動尋怪＋稀有壓血捕捉：":"自動尋怪：")+MAPS[dest.map].name+"。觸碰螢幕可停止。");
+  toast((mode==="catch"?"自動尋怪＋稀有壓血捕捉：":"自動尋怪：")+MAPS[dest.map].name+"　"+huntRangeText(dest.map)+"。觸碰螢幕可停止。");
 }
 function autoHealResume(){
   healAll();
@@ -3740,7 +3851,7 @@ function openAtlas(){
     {id:"gym6",x:10,y:4,k:"gym",g:"gym6"},
     {id:"quarry",x:58,y:64,k:"route"},
     {id:"frost",x:74,y:64,k:"route"},
-    {id:"gym4",x:74,y:80,k:"gym",g:"gym4"},
+    {id:"gym4",x:58,y:80,k:"gym",g:"gym4"},
     {id:"coast",x:58,y:48,k:"route"},
     {id:"port",x:74,y:48,k:"town"},
     {id:"gym2",x:90,y:48,k:"gym",g:"gym2"},
@@ -3757,6 +3868,33 @@ function openAtlas(){
     {id:"gym8",x:90,y:16,k:"gym",g:"gym8"}
   ];
   const flyOk = canFly();
+  const byId = {};
+  nodes.forEach(n=>{ byId[n.id]=n; });
+  const pair = new Set();
+  const edges = [];
+  nodes.forEach(n=>{
+    const m = MAPS[n.id];
+    if(!m || !m.warps) return;
+    Object.keys(m.warps).forEach(k=>{
+      const to = m.warps[k].map;
+      if(!byId[to]) return;
+      const key = n.id<to ? n.id+"|"+to : to+"|"+n.id;
+      if(pair.has(key)) return;
+      pair.add(key);
+      edges.push([n, byId[to]]);
+    });
+  });
+  const elbow = (a,b)=>{
+    const dx = Math.abs(a.x-b.x), dy = Math.abs(a.y-b.y);
+    if(dx<3 || dy<3) return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+    if(dy>=dx) return `M ${a.x} ${a.y} L ${a.x} ${b.y} L ${b.x} ${b.y}`;
+    return `M ${a.x} ${a.y} L ${b.x} ${a.y} L ${b.x} ${b.y}`;
+  };
+  const lines = edges.map(([a,b])=>{
+    const vis = S && S.visited && S.visited[a.id] && S.visited[b.id];
+    const here = S && (S.map===a.id || S.map===b.id);
+    return `<path class="${here?"here":vis?"seen":""}" d="${elbow(a,b)}"></path>`;
+  }).join("");
   const html = nodes.map(n=>{
     const m = MAPS[n.id]; if(!m) return "";
     const here = S && S.map===n.id;
@@ -3770,8 +3908,12 @@ function openAtlas(){
   openSheet(`<h2>暉光地方</h2>
     <div class="sheet-body">
       <p class="muted">徽章 ${badgeCount()}/8　${flyOk?"已解鎖飛天：點已去過的城鎮可飛行。":"飛天：取得雷翼徽章，且隊伍有龍系或會翼斬。"}<br>
-      游泳：取得潮浪徽章，隊伍有水系，在水邊按確認。</p>
-      <div class="atlas"><div class="atlas-in">${html}</div></div>
+      游泳：取得潮浪徽章，隊伍有水系，在水邊按確認。線是道路：上北下南、左西右東。</p>
+      <div class="atlas"><div class="atlas-in">
+        <svg class="atlas-lines" viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>
+        <div class="atlas-compass">北</div>
+        ${html}
+      </div></div>
     </div>
     <div class="sheet-actions">
       <button id="atBack">返回選單</button>
@@ -3882,7 +4024,8 @@ function openHelp(){
     <b>游泳</b>：取得潮浪徽章，隊伍有水系，在水邊按確認下水。<br>
     <b>飛天</b>：取得雷翼徽章，隊伍有龍系或會翼斬，地區圖點已去過的城鎮。<br>
     各地有定點傳說核獸，種族值明顯高於一般最終進化，各有專屬招式與特效；條件滿足才會現身，對話開戰可捕捉。<br>
-    隊伍最多帶 6 隻，多的進核倉，可叫回或滿員交換。選單可開自動尋怪：先選走過的草地，戰鬥優先出屬性克制與本系攻擊，沒有克制會換隊友；克制招次數用盡或低血會治療再回掛機點；第二模式遇稀有會先壓血（不打死）再連續捕捉，自身低血會依缺口喝傷藥或好傷藥，直到抓到。掛機中觸碰螢幕就會停止。<br><br>
+    隊伍最多帶 6 隻，多的進核倉。選單有「核倉」，隊伍頁也可打開；可叫回、滿員交換，或批次放生。<br>
+    選單可開自動尋怪：先選走過的草地（會顯示該地等級區間），戰鬥優先出屬性克制與本系攻擊，沒有克制會換隊友；克制招次數用盡或低血會治療再回掛機點；第二模式遇稀有會先壓血（不打死）再連續捕捉，自身低血會依缺口喝傷藥或好傷藥，直到抓到。掛機中觸碰螢幕就會停止。<br><br>
     戰鬥右上角可切 1×／2×／3× 速度。選單有屬性相剋表。<br>
     遇到稀有種時，名稱旁會出現金色「稀有」標籤。<br><br>
     「新的旅程」選好最初核獸後才會覆蓋舊存檔；覆蓋前會另存一份，標題可按「恢復上一份存檔」。重要進度也可用選單匯出備份碼。
